@@ -2,6 +2,7 @@
 use actix_web::{web, App, HttpServer, Result};
 use sqlx::Connection;
 use std::env;
+
 #[actix_web::main]
 pub async fn main() -> Result<()> {
     dotenv::dotenv().ok();
