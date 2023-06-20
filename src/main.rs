@@ -1,6 +1,5 @@
-mod controller;
-mod model;
-mod schema;
+mod handlers;
+use handlers::shows;
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
@@ -14,13 +13,12 @@ pub struct AppState {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    if std::env::var_os("RUST_LOG").is_none() {
-        std::env::set_var("RUST_LOG", "actix_web=info"); // logging api activity
-    }
+    std::env::set_var("RUST_LOG", "actix_web=info"); // logging api activity, good for dev
     dotenv().ok();
-    env_logger::init(); // logging api activity
+    env_logger::init(); // logging api activity, good for
 
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    // let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url = std::env::var("DEV_DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = match MySqlPoolOptions::new()
         .max_connections(10)
         .connect(&database_url)
@@ -31,7 +29,7 @@ async fn main() -> std::io::Result<()> {
             pool
         }
         Err(err) => {
-            println!("🔥 Failed to connect to the database: {:?}", err);
+            println!("❌ Failed to connect to the database: {:?}", err);
             std::process::exit(1);
         }
     };
@@ -50,11 +48,11 @@ async fn main() -> std::io::Result<()> {
             .supports_credentials();
         App::new()
             .app_data(web::Data::new(AppState { db: pool.clone() }))
-            .configure(controller::config)
+            .configure(shows::config)
             .wrap(cors)
             .wrap(Logger::default())
     })
-    .bind(("127.0.0.1", 8000))?
+    .bind(("127.0.0.1", 8080))?
     .run()
     .await
 }
