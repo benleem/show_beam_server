@@ -1,5 +1,4 @@
 mod handlers;
-use handlers::shows;
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
@@ -48,7 +47,8 @@ async fn main() -> std::io::Result<()> {
             .supports_credentials();
         App::new()
             .app_data(web::Data::new(AppState { db: pool.clone() }))
-            .configure(shows::config)
+            .configure(handlers::shows::config)
+            .configure(handlers::users::config)
             .wrap(cors)
             .wrap(Logger::default())
     })

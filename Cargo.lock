@@ -1247,6 +1247,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "uuid",
+ "watch",
 ]
 
 [[package]]
@@ -2318,6 +2319,12 @@ name = "wasm-bindgen-shared"
 version = "0.2.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca6ad05a4870b2bf5fe995117d3728437bd27d7cd5f06f13c17443ef369775a1"
+
+[[package]]
+name = "watch"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ed390fa2f6c6036b4dad0a2695711971998ac185f629e4b5d3d5cb3e4ff5c65"
 
 [[package]]
 name = "web-sys"
