@@ -1,36 +1,41 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, sqlx::FromRow)]
-pub struct Show {
-    id: String,
-    owner: String,
-    title: String,
-    description: String,
-    view_code: String,
+pub struct ShowModel {
+    pub id: String,
+    pub owner: String,
+    pub title: String,
+    pub description: String,
+    pub view_code: Option<String>,
 }
 
-// models for what should be recieved in body of POST, PUT request hitting the /shows endpoint
+// models for what should be recieved in params/body of POST, PUT, GET, DELETE request hitting the /shows endpoint
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct CreateShow {
-    id: String,
-    owner: String,
-    title: String,
-    description: String,
-    view_code: Option<String>,
+pub struct GetUserShowsSchema {
+    pub favorites: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct UpdateShow {
-    title: Option<String>,
-    description: Option<String>,
-    view_code: Option<String>,
+pub struct CreateShowSchema {
+    pub id: String,
+    pub owner: String,
+    pub title: String,
+    pub description: String,
+    pub view_code: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct DeleteShow {
-    id: String,
-    owner: String,
+pub struct UpdateShowSchema {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub view_code: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DeleteShowSchema {
+    pub id: String,
+    pub owner: String,
 }
 
 // response models for requests hitting the /shows endpoint
@@ -38,9 +43,9 @@ pub struct DeleteShow {
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(non_snake_case)]
 pub struct ShowResponse {
-    id: String,
-    owner: String,
-    title: String,
-    description: String,
-    viewCode: String,
+    pub id: String,
+    pub owner: String,
+    pub title: String,
+    pub description: String,
+    pub viewCode: String,
 }
