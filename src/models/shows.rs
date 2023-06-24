@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize, sqlx::FromRow)]
 pub struct ShowModel {
     pub id: String,
-    pub owner: String,
+    pub owner_id: String,
     pub title: String,
     pub description: String,
     pub view_code: Option<String>,
@@ -18,10 +18,10 @@ pub struct GetUserShowsSchema {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CreateShowSchema {
-    pub id: String,
-    pub owner: String,
+    pub owner_id: String,
     pub title: String,
     pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub view_code: Option<String>,
 }
 
@@ -34,8 +34,7 @@ pub struct UpdateShowSchema {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DeleteShowSchema {
-    pub id: String,
-    pub owner: String,
+    pub owner_id: String,
 }
 
 // response models for requests hitting the /shows endpoint
@@ -44,7 +43,7 @@ pub struct DeleteShowSchema {
 #[allow(non_snake_case)]
 pub struct ShowResponse {
     pub id: String,
-    pub owner: String,
+    pub ownerId: String,
     pub title: String,
     pub description: String,
     pub viewCode: String,
