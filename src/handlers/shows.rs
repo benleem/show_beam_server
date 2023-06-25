@@ -17,11 +17,10 @@ use serde_json::json;
 #[get("")]
 async fn get_all_shows(data: Data<AppState>) -> impl Responder {
     // need to implement pagination
-    let query_result = sqlx::query_as!(ShowModel, "SELECT * FROM shows")
+    match sqlx::query_as!(ShowModel, "SELECT * FROM shows")
         .fetch_all(&data.db)
-        .await;
-
-    match query_result {
+        .await
+    {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
                 "shows": result
@@ -39,11 +38,11 @@ async fn get_all_shows(data: Data<AppState>) -> impl Responder {
 #[get("/{id}")]
 async fn get_show_by_id(path: Path<(String)>, data: Data<AppState>) -> HttpResponse {
     let show_id = path.into_inner().to_string();
-    let query_result = sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
-        .fetch_one(&data.db)
-        .await;
 
-    match query_result {
+    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
+        .fetch_one(&data.db)
+        .await
+    {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
                 "show": result
@@ -70,12 +69,11 @@ async fn get_all_user_shows(
 ) -> impl Responder {
     let favorites = params.favorites;
     let user_id = path.into_inner().to_string();
-    let query_result =
-        sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE owner_id = ?", user_id)
-            .fetch_all(&data.db)
-            .await;
 
-    match query_result {
+    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE owner_id = ?", user_id)
+        .fetch_all(&data.db)
+        .await
+    {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
                 "shows": result
@@ -93,6 +91,7 @@ async fn get_all_user_shows(
 #[post("")]
 async fn new_show(body: Json<CreateShowSchema>, data: Data<AppState>) -> impl Responder {
     let show_id = uuid::Uuid::new_v4().to_string();
+
     let query_result = sqlx::query(
         "INSERT INTO shows (id,owner_id,title,description,view_code) VALUES (?, ?, ?, ?, ?)",
     )
@@ -120,11 +119,10 @@ async fn new_show(body: Json<CreateShowSchema>, data: Data<AppState>) -> impl Re
             .json(serde_json::json!({"status": "error","message": format!("{:?}", err)}));
     }
 
-    let query_result = sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
+    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
         .fetch_one(&data.db)
-        .await;
-
-    match query_result {
+        .await
+    {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
                 "show": result
@@ -146,7 +144,8 @@ async fn edit_show(
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
-    let query_result = sqlx::query(
+
+    match sqlx::query(
         "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ?",
     )
     .bind(body.title.to_owned().unwrap_or_default())
@@ -154,9 +153,7 @@ async fn edit_show(
     .bind(body.view_code.to_owned().unwrap_or_default())
     .bind(show_id.to_owned())
     .execute(&data.db)
-    .await;
-
-    match query_result {
+    .await {
         Ok(result) => {
             if result.rows_affected() == 0 {
                 let json_response = serde_json::json!({ "status": "error","message": format!("Show with ID: {} not found", show_id)});
@@ -176,11 +173,10 @@ async fn edit_show(
         }
     }
 
-    let query_result = sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
+    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
         .fetch_one(&data.db)
-        .await;
-
-    match query_result {
+        .await
+    {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
                 "show": result
@@ -207,11 +203,11 @@ async fn delete_show(
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
     let owner_id = &params.owner_id;
-    let show_query = sqlx::query!("DELETE FROM shows WHERE id = ?", show_id)
-        .execute(&data.db)
-        .await;
 
-    match show_query {
+    match sqlx::query!("DELETE FROM shows WHERE id = ?", show_id)
+        .execute(&data.db)
+        .await
+    {
         Ok(show) => {
             if show.rows_affected() == 0 {
                 let json_response = serde_json::json!({ "status": "fail","message": format!("Show with ID: {} not found", show_id) });

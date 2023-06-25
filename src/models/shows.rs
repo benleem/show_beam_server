@@ -11,12 +11,12 @@ pub struct ShowModel {
 
 // models for what should be recieved in params/body of POST, PUT, GET, DELETE request hitting the /shows endpoint
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct GetUserShowsSchema {
     pub favorites: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct CreateShowSchema {
     pub owner_id: String,
     pub title: String,
@@ -25,14 +25,17 @@ pub struct CreateShowSchema {
     pub view_code: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct UpdateShowSchema {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub view_code: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct DeleteShowSchema {
     pub owner_id: String,
 }
