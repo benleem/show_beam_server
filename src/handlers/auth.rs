@@ -87,7 +87,7 @@ async fn login_user_handler(
                 .cookie(cookie)
                 .json(serde_json::json!({"status": "success"}))
         }
-        Err(err) => HttpResponse::BadRequest()
+        Err(_) => HttpResponse::BadRequest()
             .json(serde_json::json!({"status": "fail", "message": "Invalid email or password"})),
     }
 }
@@ -108,7 +108,7 @@ async fn login_user_handler(
 pub fn config(conf: &mut web::ServiceConfig) {
     let scope = web::scope("/auth")
         .service(health_checker_handler)
-        .service(login_user_handler)
-        .service(register_user_handler);
+        .service(register_user_handler)
+        .service(login_user_handler);
     conf.service(scope);
 }
