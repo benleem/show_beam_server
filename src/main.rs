@@ -59,7 +59,7 @@ async fn main() -> std::io::Result<()> {
             .supports_credentials();
         App::new()
             .app_data(web::Data::new(models::auth::AppState::init(&pool)))
-            // .configure(shows::config)
+            .configure(shows::config)
             .configure(users::config)
             .configure(auth::config)
             .wrap(cors)
