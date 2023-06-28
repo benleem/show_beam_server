@@ -36,7 +36,7 @@ async fn get_all_shows(data: Data<AppState>) -> impl Responder {
 }
 
 #[get("/{id}")]
-async fn get_show_by_id(path: Path<(String)>, data: Data<AppState>) -> HttpResponse {
+async fn get_show_by_id(path: Path<String>, data: Data<AppState>) -> HttpResponse {
     let show_id = path.into_inner().to_string();
 
     match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
@@ -63,7 +63,7 @@ async fn get_show_by_id(path: Path<(String)>, data: Data<AppState>) -> HttpRespo
 
 #[get("/users/{id}")]
 async fn get_all_user_shows(
-    path: Path<(String)>,
+    path: Path<String>,
     params: Query<GetUserShowsSchema>,
     data: Data<AppState>,
 ) -> impl Responder {
@@ -197,7 +197,7 @@ async fn edit_show(
 
 #[delete("/{id}")]
 async fn delete_show(
-    path: Path<(String)>,
+    path: Path<String>,
     params: Query<DeleteShowSchema>,
     data: Data<AppState>,
 ) -> impl Responder {
@@ -229,10 +229,10 @@ async fn delete_show(
 pub fn config(conf: &mut web::ServiceConfig) {
     let scope = web::scope("/shows")
         .service(get_all_shows)
+        .service(get_all_user_shows)
         .service(get_show_by_id)
         .service(new_show)
         .service(edit_show)
-        .service(delete_show)
-        .service(get_all_user_shows);
+        .service(delete_show);
     conf.service(scope);
 }

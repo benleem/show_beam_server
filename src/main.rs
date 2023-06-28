@@ -18,10 +18,10 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init(); // logging api activity, good for
 
-    // let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let database_url = std::env::var("DEV_DATABASE_URL").expect("DEV_DATABASE_URL must be set");
-    // let base_url = std::env::var("BASE_URL").expect("BASE_URL must be set");
-    let base_url = std::env::var("DEV_BASE_URL").expect("DEV_BASE_URL must be set");
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    // let database_url = std::env::var("DEV_DATABASE_URL").expect("DEV_DATABASE_URL must be set");
+    let base_url = std::env::var("BASE_URL").expect("BASE_URL must be set");
+    // let base_url = std::env::var("DEV_BASE_URL").expect("DEV_BASE_URL must be set");
     let port = std::env::var("PORT").expect("PORT must be set");
     let port = port.parse::<u16>().unwrap();
 
