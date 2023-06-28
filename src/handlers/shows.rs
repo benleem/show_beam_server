@@ -75,6 +75,10 @@ async fn get_all_user_shows(
         .await
     {
         Ok(result) => {
+            if result.len() == 0 {
+                let json_response = serde_json::json!({ "status": "error","message": format!("No shows are associated with this user: {}", user_id)});
+                return HttpResponse::NotFound().json(json!(json_response));
+            }
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
                 "shows": result
             })});
