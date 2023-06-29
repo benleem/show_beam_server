@@ -1,8 +1,8 @@
 use crate::{
+    models::auth::AppState,
     models::shows::{
-        CreateShowSchema, DeleteShowSchema, GetUserShowsSchema, ShowModel, UpdateShowSchema,
+        CreateShowBody, DeleteShowParams, GetUserShowsParams, ShowModel, UpdateShowBody,
     },
-    AppState,
 };
 
 use actix_web::{
@@ -64,7 +64,7 @@ async fn get_show_by_id(path: Path<String>, data: Data<AppState>) -> HttpRespons
 #[get("/users/{id}")]
 async fn get_all_user_shows(
     path: Path<String>,
-    params: Query<GetUserShowsSchema>,
+    params: Query<GetUserShowsParams>,
     data: Data<AppState>,
 ) -> impl Responder {
     let favorites = params.favorites;
@@ -93,7 +93,7 @@ async fn get_all_user_shows(
 }
 
 #[post("")]
-async fn new_show(body: Json<CreateShowSchema>, data: Data<AppState>) -> impl Responder {
+async fn new_show(body: Json<CreateShowBody>, data: Data<AppState>) -> impl Responder {
     let show_id = uuid::Uuid::new_v4().to_string();
 
     let query_result = sqlx::query(
@@ -131,7 +131,6 @@ async fn new_show(body: Json<CreateShowSchema>, data: Data<AppState>) -> impl Re
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
                 "show": result
             })});
-
             return HttpResponse::Ok().json(json_response);
         }
         Err(err) => {
@@ -144,7 +143,7 @@ async fn new_show(body: Json<CreateShowSchema>, data: Data<AppState>) -> impl Re
 #[patch("/{id}")]
 async fn edit_show(
     path: Path<uuid::Uuid>,
-    body: Json<UpdateShowSchema>,
+    body: Json<UpdateShowBody>,
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
@@ -202,7 +201,7 @@ async fn edit_show(
 #[delete("/{id}")]
 async fn delete_show(
     path: Path<String>,
-    params: Query<DeleteShowSchema>,
+    params: Query<DeleteShowParams>,
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
