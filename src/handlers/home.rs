@@ -8,7 +8,7 @@ use actix_web::{
 
 #[get("")]
 async fn get_home() -> impl Responder {
-    let json_response = serde_json::json!({"status": "success","message": "Welcome to the mark_slide api"
+    let json_response = serde_json::json!({"status": "success","message": "Welcome to the Mark Slide api"
     });
     return HttpResponse::Ok().json(json_response);
 }
