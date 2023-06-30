@@ -12,7 +12,7 @@ use actix_web::{
 };
 use serde_json::json;
 
-// endpoints
+// endpoints test
 
 #[get("")]
 async fn get_all_shows(data: Data<AppState>) -> impl Responder {
