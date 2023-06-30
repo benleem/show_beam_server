@@ -15,7 +15,7 @@ use sqlx::mysql::MySqlPoolOptions;
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info"); // logging api activity, good for dev
     dotenv().ok();
-    env_logger::init(); // logging api activity, good for
+    env_logger::init(); // logging api activity, good for dev
 
     // let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     // builder
