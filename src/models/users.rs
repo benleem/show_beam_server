@@ -8,14 +8,18 @@ pub struct UserModel {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct CreateUser {
-    pub id: String,
-    pub username: String,
+pub struct CreateUserBody {
+    pub name: String,
     pub email: String,
+}
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UpdateUserBody {
+    pub name: Option<String>,
+    pub email: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct DeleteUser {
+pub struct DeleteUserBody {
     pub id: String,
 }
 
@@ -39,14 +43,14 @@ pub struct UserResponse {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct RegisterUserSchema {
+pub struct RegisterUserParams {
     pub name: String,
     pub email: String,
     pub password: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct LoginUserSchema {
+pub struct LoginUserParams {
     pub email: String,
     pub password: String,
 }

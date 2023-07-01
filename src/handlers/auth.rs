@@ -1,6 +1,6 @@
 use crate::models::{
     auth::{AppState, TokenClaims},
-    users::{RegisterUserSchema, UserData, UserModel, UserResponse},
+    users::{RegisterUserParams, UserData, UserModel, UserResponse},
 };
 use actix_web::{
     cookie::{time::Duration as ActixWebDuration, Cookie},
@@ -19,7 +19,7 @@ async fn health_checker_handler() -> impl Responder {
 
 #[post("/register")]
 async fn register_user_handler(
-    body: web::Json<RegisterUserSchema>,
+    body: web::Json<RegisterUserParams>,
     data: web::Data<AppState>,
 ) -> impl Responder {
     match sqlx::query_as::<_, UserModel>("SELECT * FROM users WHERE email = ?")
@@ -27,10 +27,10 @@ async fn register_user_handler(
         .fetch_optional(&data.db)
         .await
     {
-        Ok(_) => HttpResponse::Conflict()
-            .json(serde_json::json!({"status": "fail","message": "Email already exists"})),
-        Err(err) => match err {
-            sqlx::Error::RowNotFound => {
+        Ok(response) => match response {
+            Some(_) => HttpResponse::BadRequest()
+                .json(serde_json::json!({"status": "fail","message": "User already exists"})),
+            None => {
                 let uuid_id = Uuid::new_v4();
                 let user = UserModel {
                     id: uuid_id.to_string(),
@@ -45,14 +45,15 @@ async fn register_user_handler(
                 };
                 HttpResponse::Ok().json(response)
             }
-            _ => HttpResponse::InternalServerError().finish(),
         },
+        Err(err) => HttpResponse::InternalServerError()
+            .json(serde_json::json!({"status": "error","message": format!("{:?}", err)})),
     }
 }
 
 #[post("/login")]
 async fn login_user_handler(
-    body: web::Json<RegisterUserSchema>,
+    body: web::Json<RegisterUserParams>,
     data: web::Data<AppState>,
 ) -> impl Responder {
     match sqlx::query_as::<_, UserModel>("SELECT * FROM users WHERE email = ?")
