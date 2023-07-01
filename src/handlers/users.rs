@@ -1,7 +1,12 @@
 use crate::models::auth::AppState;
 use crate::models::users::{CreateUserBody, UpdateUserBody, UserModel};
-use actix_web::web::{Data, Json};
-use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
+
+use actix_web::{
+    delete, get, patch, post,
+    web::{self, Data, Json, Path, Query},
+    HttpResponse, Responder,
+};
+
 use serde_json::json;
 use sqlx;
 
@@ -26,8 +31,10 @@ async fn get_all_users(data: Data<AppState>) -> impl Responder {
 }
 
 #[get("/{id}")]
-async fn get_user_by_id(path: web::Path<(String, )>, data: Data<AppState>) -> impl Responder {
-    match sqlx::query_as!(UserModel, "SELECT * FROM users WHERE id = ?", &path.0)
+async fn get_user_by_id(path: Path<String>, data: Data<AppState>) -> impl Responder {
+    let user_id = path.into_inner().to_string();
+    
+    match sqlx::query_as!(UserModel, "SELECT * FROM users WHERE id = ?", user_id)
         .fetch_one(&data.db)
         .await
     {
