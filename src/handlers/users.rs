@@ -1,4 +1,4 @@
-use crate::models::auth::AppState;
+use crate::models::app::AppState;
 use crate::models::users::{CreateUserBody, UpdateUserBody, UserModel};
 
 use actix_web::{

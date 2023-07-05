@@ -51,9 +51,12 @@ pub struct RegisterUserParams {
 
 #[derive(Debug, Deserialize)]
 pub struct LoginUserParams {
-    pub email: String,
-    pub password: String,
+    pub authorization_code: String,
 }
+// pub struct LoginUserParams {
+//     pub email: String,
+//     pub password: String,
+// }
 
 impl UserModel {
     pub fn user_to_response(user: &UserModel) -> FilteredUser {

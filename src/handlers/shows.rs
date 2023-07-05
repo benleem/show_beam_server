@@ -1,5 +1,5 @@
 use crate::{
-    models::auth::AppState,
+    models::app::AppState,
     models::shows::{
         CreateShowBody, DeleteShowParams, GetUserShowsParams, ShowModel, UpdateShowBody,
     },

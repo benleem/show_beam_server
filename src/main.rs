@@ -58,7 +58,7 @@ async fn main() -> std::io::Result<()> {
             ])
             .supports_credentials();
         App::new()
-            .app_data(web::Data::new(models::auth::AppState::init(&pool)))
+            .app_data(web::Data::new(models::app::AppState::init(&pool)))
             .configure(auth::config)
             .configure(users::config)
             .configure(home::config)
