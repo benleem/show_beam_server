@@ -1,5 +1,5 @@
 [package]
-name = "mark_slide"
+name = "mark_slide_server"
 version = "0.1.0"
 edition = "2021"
 
