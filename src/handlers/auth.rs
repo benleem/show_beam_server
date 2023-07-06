@@ -1,19 +1,15 @@
-use crate::models::{
-    app::AppState,
-    auth::{QueryCode, TokenClaims},
-};
+use crate::models::{app::AppState, auth::QueryCode};
 use crate::services::github_auth::{get_github_user, request_token};
 
 use actix_web::{
     cookie::{time::Duration as ActixWebDuration, Cookie},
-    get, post, web, HttpResponse, Responder,
+    get,
+    web::{scope, Data, Query, ServiceConfig},
+    HttpResponse, Responder,
 };
-use chrono::{prelude::*, Duration};
-use jsonwebtoken::{encode, EncodingKey, Header};
-use uuid::Uuid;
 
 #[get("/login")]
-async fn get_login_url(data: web::Data<AppState>) -> impl Responder {
+async fn get_login_url(data: Data<AppState>) -> impl Responder {
     let client_id = data.env.github_oauth_client_id.to_owned();
     let redirect_url = data.env.github_oauth_redirect_url.to_owned();
     let state = uuid::Uuid::new_v4().to_string();
@@ -55,17 +51,14 @@ async fn get_login_url(data: web::Data<AppState>) -> impl Responder {
 //         .max_age(ActixWebDuration::new(-1, 0))
 //         .http_only(true)
 //         .finish();
-//
+
 //     HttpResponse::Ok()
 //         .cookie(cookie)
 //         .json(serde_json::json!({"status": "success"}))
 // }
 
 #[get("/oauth/github")]
-async fn github_oauth_handler(
-    query: web::Query<QueryCode>,
-    data: web::Data<AppState>,
-) -> impl Responder {
+async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> impl Responder {
     let code = &query.code;
     let state = &query.state;
 
@@ -92,8 +85,8 @@ async fn github_oauth_handler(
     return HttpResponse::Ok().json(json_response);
 }
 
-pub fn config(conf: &mut web::ServiceConfig) {
-    let scope = web::scope("/auth")
+pub fn config(conf: &mut ServiceConfig) {
+    let scope = scope("/auth")
         .service(get_login_url)
         // .service(logout_handler)
         .service(github_oauth_handler);

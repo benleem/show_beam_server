@@ -1,16 +1,16 @@
 mod handlers;
-use handlers::{auth, home, shows};
+use handlers::{auth, shows};
 mod config;
 mod models;
 mod services;
 
 use actix_cors::Cors;
-use actix_web::middleware::Logger;
-use actix_web::{http::header, web, App, HttpServer};
+use actix_web::{
+    get, http::header, middleware::Logger, web, App, HttpResponse, HttpServer, Responder,
+};
 use dotenv::dotenv;
 // use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use sqlx::mysql::MySqlPoolOptions;
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info"); // logging api activity, good for dev
@@ -60,7 +60,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(models::app::AppState::init(&pool)))
             .configure(auth::config)
-            .configure(home::config)
+            .service(get_home)
             .configure(shows::config)
             .wrap(cors)
             .wrap(Logger::default())
@@ -68,4 +68,11 @@ async fn main() -> std::io::Result<()> {
     .bind((base_url, port))?
     .run()
     .await
+}
+
+#[get("/")]
+async fn get_home() -> impl Responder {
+    let json_response = serde_json::json!({"status": "success","message": "Welcome to the Mark Slide api"
+    });
+    return HttpResponse::Ok().json(json_response);
 }
