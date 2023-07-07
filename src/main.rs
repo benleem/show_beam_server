@@ -18,12 +18,6 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init(); // logging api activity, good for dev
 
-    // let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    // builder
-    //     .set_private_key_file("key.pem", SslFiletype::PEM)
-    //     .unwrap();
-    // builder.set_certificate_chain_file("cert.pem").unwrap();
-
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let base_url = std::env::var("BASE_URL").expect("BASE_URL must be set");
     let port = std::env::var("PORT")
