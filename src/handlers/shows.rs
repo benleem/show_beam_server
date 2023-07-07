@@ -12,8 +12,6 @@ use actix_web::{
 };
 use serde_json::json;
 
-// endpoints
-
 #[get("")]
 async fn get_all_shows(data: Data<AppState>) -> impl Responder {
     // need to implement pagination
