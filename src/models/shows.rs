@@ -14,7 +14,7 @@ pub struct ShowModel {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GetUserShowsParams {
-    pub favorites: Option<bool>,
+    pub favorites: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
