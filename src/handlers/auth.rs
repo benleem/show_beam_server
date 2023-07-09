@@ -111,13 +111,6 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
 async fn get_current_user(auth_guard: AuthenticationGuard, data: Data<AppState>) -> impl Responder {
     let user_id = auth_guard.user_id.to_owned();
 
-    // let json_response = UserResponse {
-    //     status: "success".to_string(),
-    //     data: UserData {
-    //         user: user_to_response(&user.unwrap()),
-    //     },
-    // };
-
     let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
         "user_id": user_id,
     })});
