@@ -74,5 +74,5 @@ async fn main() -> std::io::Result<()> {
 async fn get_home() -> impl Responder {
     let json_response = serde_json::json!({"status": "success","message": "Welcome to the Mark Slide api"
     });
-    return HttpResponse::Ok().json(json_response);
+    HttpResponse::Ok().json(json_response)
 }

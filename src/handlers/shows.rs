@@ -97,7 +97,7 @@ async fn new_show(body: Json<CreateShowBody>, data: Data<AppState>) -> impl Resp
     let show_id = uuid::Uuid::new_v4().to_string();
 
     let query_result = sqlx::query(
-        "INSERT INTO shows (id,owner_id,title,description,view_code) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO shows (id,owner_id,title,description, view_code) VALUES (?, ?, ?, ?, NULLIF(?, ''))",
     )
     .bind(show_id.clone())
     .bind(body.owner_id.to_string())

@@ -1,5 +1,11 @@
-use crate::models::{app::AppState, auth::QueryCode};
-use crate::services::github_auth::{get_github_user, request_token};
+use crate::models::{
+    app::AppState,
+    auth::{GitHubUserModel, QueryCode, TokenClaims},
+};
+use crate::services::{
+    authenticate_token::AuthenticationGuard,
+    github_auth::{get_github_user, request_token},
+};
 
 use actix_web::{
     cookie::{time::Duration as ActixWebDuration, Cookie},
@@ -7,6 +13,9 @@ use actix_web::{
     web::{scope, Data, Query, ServiceConfig},
     HttpResponse, Responder,
 };
+use chrono::{prelude::*, Duration};
+use jsonwebtoken::{encode, EncodingKey, Header};
+use reqwest::header::LOCATION;
 
 #[get("/login")]
 async fn get_login_url(data: Data<AppState>) -> impl Responder {
@@ -41,26 +50,13 @@ async fn get_login_url(data: Data<AppState>) -> impl Responder {
     let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
         "login_url": login_url
     })});
-    return HttpResponse::Ok().json(json_response);
+    HttpResponse::Ok().json(json_response)
 }
-
-// #[get("/logout")]
-// async fn logout_handler(_: AuthenticationGuard) -> impl Responder {
-//     let cookie = Cookie::build("token", "")
-//         .path("/")
-//         .max_age(ActixWebDuration::new(-1, 0))
-//         .http_only(true)
-//         .finish();
-
-//     HttpResponse::Ok()
-//         .cookie(cookie)
-//         .json(serde_json::json!({"status": "success"}))
-// }
 
 #[get("/oauth/github")]
 async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> impl Responder {
     let code = &query.code;
-    let state = &query.state;
+    // let state = &query.state;
 
     let token_response = request_token(code.as_str(), &data).await;
     if token_response.is_err() {
@@ -68,7 +64,6 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
         return HttpResponse::BadGateway()
             .json(serde_json::json!({"status": "fail", "message": message}));
     }
-
     let token_response = token_response.unwrap();
 
     let github_user = get_github_user(&token_response.access_token).await;
@@ -79,16 +74,72 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
     }
     let github_user = github_user.unwrap();
 
+    let jwt_secret = data.env.jwt_secret.to_owned();
+    let now = Utc::now();
+    let iat = now.timestamp() as usize;
+    let exp = (now + Duration::minutes(data.env.jwt_max_age)).timestamp() as usize;
+    let claims: TokenClaims = TokenClaims {
+        sub: github_user.id.to_string(),
+        exp,
+        iat,
+    };
+
+    let token = encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(jwt_secret.as_ref()),
+    )
+    .unwrap();
+
+    let cookie = Cookie::build("token", token)
+        .path("/")
+        .max_age(ActixWebDuration::new(60 * data.env.jwt_max_age, 0))
+        .http_only(true)
+        // .secure(true) //for production
+        .finish();
+
+    let frontend_origin = data.env.client_origin.to_owned();
+    let mut response = HttpResponse::Found();
+    response.append_header((LOCATION, format!("{}/profile", frontend_origin)));
+    response.cookie(cookie);
+    response.finish()
+}
+
+#[get("/current_user")]
+async fn get_current_user(auth_guard: AuthenticationGuard, data: Data<AppState>) -> impl Responder {
+    let user_id = auth_guard.user_id.to_owned();
+
+    // let json_response = UserResponse {
+    //     status: "success".to_string(),
+    //     data: UserData {
+    //         user: user_to_response(&user.unwrap()),
+    //     },
+    // };
+
     let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-        "github_user":github_user
+        "user_id": user_id,
     })});
     return HttpResponse::Ok().json(json_response);
+}
+
+#[get("/logout")]
+async fn logout_handler(_: AuthenticationGuard) -> impl Responder {
+    let cookie = Cookie::build("token", "")
+        .path("/")
+        .max_age(ActixWebDuration::new(-1, 0))
+        .http_only(true)
+        .finish();
+
+    HttpResponse::Ok()
+        .cookie(cookie)
+        .json(serde_json::json!({"status": "success"}))
 }
 
 pub fn config(conf: &mut ServiceConfig) {
     let scope = scope("/auth")
         .service(get_login_url)
-        // .service(logout_handler)
-        .service(github_oauth_handler);
+        .service(github_oauth_handler)
+        .service(get_current_user)
+        .service(logout_handler);
     conf.service(scope);
 }
