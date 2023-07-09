@@ -3,6 +3,7 @@ use handlers::{auth, shows};
 mod config;
 mod models;
 mod services;
+mod tests;
 
 use actix_cors::Cors;
 use actix_web::{
@@ -16,12 +17,6 @@ async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info"); // logging api activity, good for dev
     dotenv().ok();
     env_logger::init(); // logging api activity, good for dev
-
-    // let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    // builder
-    //     .set_private_key_file("key.pem", SslFiletype::PEM)
-    //     .unwrap();
-    // builder.set_certificate_chain_file("cert.pem").unwrap();
 
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let base_url = std::env::var("BASE_URL").expect("BASE_URL must be set");

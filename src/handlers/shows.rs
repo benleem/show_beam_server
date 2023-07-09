@@ -11,8 +11,6 @@ use actix_web::{
 };
 use serde_json::json;
 
-// endpoints
-
 #[get("")]
 async fn get_all_shows(data: Data<AppState>) -> impl Responder {
     // need to implement pagination
@@ -203,11 +201,11 @@ async fn edit_show(
 #[delete("/{id}")]
 async fn delete_show(
     path: Path<String>,
-    params: Query<DeleteShowParams>,
+    // params: Query<DeleteShowParams>,
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
-    let owner_id = &params.owner_id;
+    // let owner_id = &params.owner_id;
 
     match sqlx::query!("DELETE FROM shows WHERE id = ?", show_id)
         .execute(&data.db)
