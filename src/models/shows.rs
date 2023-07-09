@@ -14,7 +14,7 @@ pub struct ShowModel {
 
 #[derive(Debug, Deserialize)]
 pub struct GetUserShowsParams {
-    pub favorites: Option<bool>,
+    pub favorites: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -41,7 +41,7 @@ pub struct DeleteShowParams {
     pub owner_id: String,
 }
 
-// response models for requests hitting the /shows endpoint
+// response and request structs for hitting the /shows endpoint
 
 // #[derive(Debug, Deserialize, Serialize)]
 // #[allow(non_snake_case)]

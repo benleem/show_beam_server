@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 
 #[derive(Debug, Deserialize)]
 pub struct QueryCode {

@@ -1,9 +1,8 @@
-use crate::{
-    models::app::AppState,
-    models::shows::{
-        CreateShowBody, DeleteShowParams, GetUserShowsParams, ShowModel, UpdateShowBody,
-    },
+use crate::models::{
+    app::AppState,
+    shows::{CreateShowBody, DeleteShowParams, GetUserShowsParams, ShowModel, UpdateShowBody},
 };
+use crate::services::authenticate_token::AuthenticationGuard;
 
 use actix_web::{
     delete, get, patch, post,
@@ -36,7 +35,7 @@ async fn get_all_shows(data: Data<AppState>) -> impl Responder {
 }
 
 #[get("/{id}")]
-async fn get_show_by_id(path: Path<String>, data: Data<AppState>) -> HttpResponse {
+async fn get_show_by_id(path: Path<String>, data: Data<AppState>) -> impl Responder {
     let show_id = path.into_inner().to_string();
 
     match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
@@ -144,17 +143,20 @@ async fn new_show(body: Json<CreateShowBody>, data: Data<AppState>) -> impl Resp
 async fn edit_show(
     path: Path<uuid::Uuid>,
     body: Json<UpdateShowBody>,
+    auth_guard: AuthenticationGuard,
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
+    let user_id = auth_guard.user_id.to_owned();
 
     match sqlx::query(
-        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ?",
+        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND owner_id = ?",
     )
     .bind(body.title.to_owned().unwrap_or_default())
     .bind(body.description.to_owned().unwrap_or_default())
     .bind(body.view_code.to_owned().unwrap_or_default())
     .bind(show_id.to_owned())
+    .bind(user_id)
     .execute(&data.db)
     .await {
         Ok(result) => {

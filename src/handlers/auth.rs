@@ -1,6 +1,6 @@
 use crate::models::{
     app::AppState,
-    auth::{GitHubUserModel, QueryCode, TokenClaims},
+    auth::{QueryCode, TokenClaims},
 };
 use crate::services::{
     authenticate_token::AuthenticationGuard,
@@ -73,6 +73,8 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
             .json(serde_json::json!({"status": "fail", "message": message}));
     }
     let github_user = github_user.unwrap();
+
+    // use github_user to insert into user table
 
     let jwt_secret = data.env.jwt_secret.to_owned();
     let now = Utc::now();
