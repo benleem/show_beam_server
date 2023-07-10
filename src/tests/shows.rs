@@ -37,6 +37,7 @@ async fn new_show_test() -> String {
         owner_id: "99999".to_string(),
         title: "Sample Show".to_string(),
         description: "Sample Description".to_string(),
+        public: true,
         view_code: None,
     };
 
@@ -107,6 +108,7 @@ async fn edit_show_test(id: &str) -> bool {
     let show_body = UpdateShowBody {
         title: Some("Change Show".to_string()),
         description: Some("Change Description".to_string()),
+        public: Some(false),
         view_code: None,
     };
 
