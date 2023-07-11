@@ -4,12 +4,12 @@ use sqlx::FromRow;
 
 #[derive(Debug, Deserialize, Serialize, FromRow)]
 pub struct UserModel {
-    pub username: String,
     pub id: u32,
+    pub name: String,
+    pub username: String,
+    pub email: Option<String>,
     pub avatar_url: String,
     pub profile_url: String,
-    pub name: String,
-    pub email: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }

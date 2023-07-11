@@ -1,5 +1,4 @@
-use crate::models::app::AppState;
-use crate::models::users::UserModel;
+use crate::models::{app::AppState, users::UserModel};
 
 use actix_web::{
     delete, get, patch, post,
@@ -39,12 +38,15 @@ async fn get_user_by_id(path: Path<String>, data: Data<AppState>) -> impl Respon
         .await
     {
         Ok(user) => {
-            let json_response = json!({ "user": user });
+            let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
+                "user": user,
+            })});
             HttpResponse::Ok().json(json_response)
         }
         Err(error) => {
-            eprintln!("Failed to retrieve user: {}", error);
-            HttpResponse::InternalServerError().body("Failed to retrieve user")
+            let json_response =
+                serde_json::json!({"status": "error","message": format!("{:?}", error)});
+            HttpResponse::InternalServerError().json(json_response)
         }
     }
 }

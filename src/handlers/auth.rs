@@ -1,6 +1,7 @@
 use crate::models::{
     app::AppState,
     auth::{QueryCode, TokenClaims},
+    users::UserModel,
 };
 use crate::services::{
     authenticate_token::AuthenticationGuard,
@@ -55,6 +56,7 @@ async fn get_login_url(data: Data<AppState>) -> impl Responder {
 
 #[get("/oauth/github")]
 async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> impl Responder {
+    let frontend_origin = data.env.client_origin.to_owned();
     let code = &query.code;
     // let state = &query.state;
 
@@ -74,7 +76,29 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
     }
     let github_user = github_user.unwrap();
 
-    // use github_user to insert into user table
+    let create_user_query = sqlx::query(
+        "INSERT INTO users (id, name, username, email, avatar_url, profile_url) VALUES (?, ?, ?, NULLIF(?, ''), ?, ?)",
+    )
+    .bind(github_user.id.to_string())
+    .bind(github_user.name)
+    .bind(github_user.login)
+    .bind(github_user.email.unwrap_or_default())
+    .bind(github_user.avatar_url)
+    .bind(github_user.html_url)
+    .execute(&data.db)
+    .await
+    .map_err(|err: sqlx::Error| err.to_string());
+
+    if let Err(err) = create_user_query {
+        // if err.contains("Duplicate entry") && err.contains("'users.PRIMARY'") {
+        //     HttpResponse::BadRequest()
+        //         .append_header((LOCATION, format!("{}/profile", frontend_origin)))
+        //         .json(serde_json::json!({"status": "error","message": "This id is already associated with a user"}));
+        // }
+        HttpResponse::InternalServerError()
+            .append_header((LOCATION, format!("{}/profile", frontend_origin)))
+            .json(serde_json::json!({"status": "error","message": format!("{:?}", err)}));
+    }
 
     let jwt_secret = data.env.jwt_secret.to_owned();
     let now = Utc::now();
@@ -100,7 +124,6 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
         // .secure(true) //for production
         .finish();
 
-    let frontend_origin = data.env.client_origin.to_owned();
     let mut response = HttpResponse::Found();
     response.append_header((LOCATION, format!("{}/profile", frontend_origin)));
     response.cookie(cookie);
@@ -111,10 +134,22 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
 async fn get_current_user(auth_guard: AuthenticationGuard, data: Data<AppState>) -> impl Responder {
     let user_id = auth_guard.user_id.to_owned();
 
-    let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-        "user_id": user_id,
-    })});
-    return HttpResponse::Ok().json(json_response);
+    match sqlx::query_as!(UserModel, "SELECT * FROM users WHERE id = ?", user_id)
+        .fetch_one(&data.db)
+        .await
+    {
+        Ok(user) => {
+            let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
+                "user": user,
+            })});
+            HttpResponse::Ok().json(json_response)
+        }
+        Err(error) => {
+            let json_response =
+                serde_json::json!({"status": "error","message": format!("{:?}", error)});
+            HttpResponse::InternalServerError().json(json_response)
+        }
+    }
 }
 
 #[get("/logout")]

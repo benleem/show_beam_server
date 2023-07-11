@@ -25,6 +25,7 @@ pub struct ShowModel {
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
+
 // models for what should be recieved in params/body of POST, PUT, GET, DELETE request hitting the /shows endpoint
 
 #[derive(Debug, Deserialize, Serialize)]
