@@ -19,7 +19,6 @@ pub struct GetUserShowsParams {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CreateShowBody {
-    pub owner_id: String,
     pub title: String,
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
