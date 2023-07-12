@@ -1,6 +1,9 @@
 use crate::models::{
     app::AppState,
-    shows::{CreateShowBody, DeleteShowParams, GetUserShowsParams, ShowModel, UpdateShowBody},
+    shows::{
+        filter_db_record, CreateShowBody, DeleteShowParams, GetUserShowsParams, ShowModel,
+        ShowModelSql, UpdateShowBody,
+    },
 };
 use crate::services::authenticate_token::AuthenticationGuard;
 
@@ -14,13 +17,17 @@ use serde_json::json;
 #[get("")]
 async fn get_all_shows(data: Data<AppState>) -> impl Responder {
     // need to implement pagination
-    match sqlx::query_as!(ShowModel, "SELECT * FROM shows")
+    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows")
         .fetch_all(&data.db)
         .await
     {
         Ok(result) => {
+            let shows = result
+                .into_iter()
+                .map(|show| filter_db_record(&show))
+                .collect::<Vec<ShowModel>>();
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "shows": result
+                "shows": shows
             })});
             return HttpResponse::Ok().json(json_response);
         }
@@ -36,13 +43,13 @@ async fn get_all_shows(data: Data<AppState>) -> impl Responder {
 async fn get_show_by_id(path: Path<String>, data: Data<AppState>) -> impl Responder {
     let show_id = path.into_inner().to_string();
 
-    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
+    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows WHERE id = ?", show_id)
         .fetch_one(&data.db)
         .await
     {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "show": result
+                "show": filter_db_record(&result)
             })});
             return HttpResponse::Ok().json(json_response);
         }
@@ -67,17 +74,25 @@ async fn get_all_user_shows(
     let favorites = params.favorites;
     let user_id = path.into_inner().to_string();
 
-    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE owner_id = ?", user_id)
-        .fetch_all(&data.db)
-        .await
+    match sqlx::query_as!(
+        ShowModelSql,
+        "SELECT * FROM shows WHERE owner_id = ?",
+        user_id
+    )
+    .fetch_all(&data.db)
+    .await
     {
         Ok(result) => {
             if result.len() == 0 {
                 let json_response = serde_json::json!({ "status": "error","message": format!("No shows are associated with this user: {}", user_id)});
                 return HttpResponse::NotFound().json(json!(json_response));
             }
+            let shows = result
+                .into_iter()
+                .map(|show| filter_db_record(&show))
+                .collect::<Vec<ShowModel>>();
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "shows": result
+                "shows": shows
             })});
             return HttpResponse::Ok().json(json_response);
         }
@@ -99,12 +114,13 @@ async fn new_show(
     let user_id = auth_guard.user_id.to_owned();
 
     let query_result = sqlx::query(
-        "INSERT INTO shows (id,owner_id,title,description, view_code) VALUES (?, ?, ?, ?, NULLIF(?, ''))",
+        "INSERT INTO shows (id, owner_id, title, description, public, view_code) VALUES (?, ?, ?, ?, ?, NULLIF(?, ''))",
     )
     .bind(show_id.clone())
     .bind(user_id.to_string())
     .bind(body.title.to_string())
     .bind(body.description.to_string())
+    .bind(body.public)
     .bind(body.view_code.to_owned().unwrap_or_default())
     .execute(&data.db)
     .await
@@ -125,13 +141,13 @@ async fn new_show(
             .json(serde_json::json!({"status": "error","message": format!("{:?}", err)}));
     }
 
-    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
+    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows WHERE id = ?", show_id)
         .fetch_one(&data.db)
         .await
     {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "show": result
+                "show": filter_db_record(&result)
             })});
             return HttpResponse::Ok().json(json_response);
         }
@@ -153,10 +169,11 @@ async fn edit_show(
     let user_id = auth_guard.user_id.to_owned();
 
     match sqlx::query(
-        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND owner_id = ?",
+        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), public = COALESCE(NULLIF(?, ''), public), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND owner_id = ?",
     )
     .bind(body.title.to_owned().unwrap_or_default())
     .bind(body.description.to_owned().unwrap_or_default())
+    .bind(body.public.to_owned().unwrap_or_default())
     .bind(body.view_code.to_owned().unwrap_or_default())
     .bind(show_id.to_owned())
     .bind(user_id)
@@ -181,13 +198,13 @@ async fn edit_show(
         }
     }
 
-    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
+    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows WHERE id = ?", show_id)
         .fetch_one(&data.db)
         .await
     {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "show": result
+                "show": filter_db_record(&result)
             })});
             return HttpResponse::Ok().json(json_response);
         }
