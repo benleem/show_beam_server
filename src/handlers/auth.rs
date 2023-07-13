@@ -118,16 +118,17 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
     .unwrap();
 
     let cookie = Cookie::build("token", token)
+        .domain("localhost")
         .path("/")
         .max_age(ActixWebDuration::new(60 * data.env.jwt_max_age, 0))
         .http_only(true)
         // .secure(true) //for production
         .finish();
 
-    let mut response = HttpResponse::Found();
-    response.append_header((LOCATION, format!("{}/profile", frontend_origin)));
-    response.cookie(cookie);
-    response.finish()
+    HttpResponse::Found()
+        .append_header((LOCATION, format!("{}/profile", frontend_origin)))
+        .cookie(cookie)
+        .finish()
 }
 
 #[get("/current_user")]
@@ -154,11 +155,13 @@ async fn get_current_user(auth_guard: AuthenticationGuard, data: Data<AppState>)
 
 #[get("/logout")]
 async fn logout_handler(_: AuthenticationGuard) -> impl Responder {
-    let cookie = Cookie::build("token", "")
+    let mut cookie = Cookie::build("token", "")
+        .domain("localhost")
         .path("/")
         .max_age(ActixWebDuration::new(-1, 0))
         .http_only(true)
         .finish();
+    cookie.make_removal();
 
     HttpResponse::Ok()
         .cookie(cookie)
