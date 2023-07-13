@@ -105,14 +105,19 @@ async fn get_all_user_shows(
 }
 
 #[post("")]
-async fn new_show(body: Json<CreateShowBody>, data: Data<AppState>) -> impl Responder {
+async fn new_show(
+    body: Json<CreateShowBody>,
+    auth_guard: AuthenticationGuard,
+    data: Data<AppState>,
+) -> impl Responder {
     let show_id = uuid::Uuid::new_v4().to_string();
+    let user_id = auth_guard.user_id.to_owned();
 
     let query_result = sqlx::query(
         "INSERT INTO shows (id, owner_id, title, description, public, view_code) VALUES (?, ?, ?, ?, ?, NULLIF(?, ''))",
     )
     .bind(show_id.clone())
-    .bind(body.owner_id.to_string())
+    .bind(user_id.to_string())
     .bind(body.title.to_string())
     .bind(body.description.to_string())
     .bind(body.public)
@@ -219,14 +224,19 @@ async fn edit_show(
 async fn delete_show(
     path: Path<String>,
     // params: Query<DeleteShowParams>,
+    auth_guard: AuthenticationGuard,
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
-    // let owner_id = &params.owner_id;
+    let user_id = auth_guard.user_id.to_owned();
 
-    match sqlx::query!("DELETE FROM shows WHERE id = ?", show_id)
-        .execute(&data.db)
-        .await
+    match sqlx::query!(
+        "DELETE FROM shows WHERE id = ? AND owner_id = ?",
+        show_id,
+        user_id
+    )
+    .execute(&data.db)
+    .await
     {
         Ok(show) => {
             if show.rows_affected() == 0 {
@@ -243,8 +253,6 @@ async fn delete_show(
         }
     };
 }
-
-// config
 
 pub fn config(conf: &mut web::ServiceConfig) {
     let scope = web::scope("/shows")

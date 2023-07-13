@@ -12,7 +12,7 @@ use actix_web::{
     cookie::{time::Duration as ActixWebDuration, Cookie},
     get,
     web::{scope, Data, Query, ServiceConfig},
-    HttpResponse, Responder,
+    HttpRequest, HttpResponse, Responder,
 };
 use chrono::{prelude::*, Duration};
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -155,13 +155,12 @@ async fn get_current_user(auth_guard: AuthenticationGuard, data: Data<AppState>)
 
 #[get("/logout")]
 async fn logout_handler(_: AuthenticationGuard) -> impl Responder {
-    let mut cookie = Cookie::build("token", "")
+    let cookie = Cookie::build("token", "")
         .domain("localhost")
         .path("/")
         .max_age(ActixWebDuration::new(-1, 0))
         .http_only(true)
         .finish();
-    cookie.make_removal();
 
     HttpResponse::Ok()
         .cookie(cookie)

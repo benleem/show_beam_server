@@ -35,7 +35,6 @@ pub struct GetUserShowsParams {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CreateShowBody {
-    pub owner_id: String,
     pub title: String,
     pub description: String,
     pub public: bool,
