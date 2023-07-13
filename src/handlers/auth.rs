@@ -12,7 +12,7 @@ use actix_web::{
     cookie::{time::Duration as ActixWebDuration, Cookie},
     get,
     web::{scope, Data, Query, ServiceConfig},
-    HttpResponse, Responder,
+    HttpRequest, HttpResponse, Responder,
 };
 use chrono::{prelude::*, Duration};
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -118,6 +118,7 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
     .unwrap();
 
     let cookie = Cookie::build("token", token)
+        .domain("localhost")
         .path("/")
         .max_age(ActixWebDuration::new(60 * data.env.jwt_max_age, 0))
         .http_only(true)
@@ -155,6 +156,7 @@ async fn get_current_user(auth_guard: AuthenticationGuard, data: Data<AppState>)
 #[get("/logout")]
 async fn logout_handler(_: AuthenticationGuard) -> impl Responder {
     let cookie = Cookie::build("token", "")
+        .domain("localhost")
         .path("/")
         .max_age(ActixWebDuration::new(-1, 0))
         .http_only(true)
