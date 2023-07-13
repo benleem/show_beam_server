@@ -9,7 +9,7 @@ use crate::services::{
 };
 
 use actix_web::{
-    cookie::{time::Duration as ActixWebDuration, Cookie},
+    cookie::{time::Duration as ActixWebDuration, Cookie, SameSite},
     get,
     web::{scope, Data, Query, ServiceConfig},
     HttpRequest, HttpResponse, Responder,
@@ -123,6 +123,7 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
         .max_age(ActixWebDuration::new(60 * data.env.jwt_max_age, 0))
         .http_only(true)
         // .secure(true) //for production
+        .same_site(SameSite::Strict)
         .finish();
 
     HttpResponse::Found()
@@ -160,6 +161,7 @@ async fn logout_handler(_: AuthenticationGuard) -> impl Responder {
         .path("/")
         .max_age(ActixWebDuration::new(-1, 0))
         .http_only(true)
+        .same_site(SameSite::Strict)
         .finish();
 
     HttpResponse::Ok()
@@ -173,5 +175,6 @@ pub fn config(conf: &mut ServiceConfig) {
         .service(github_oauth_handler)
         .service(get_current_user)
         .service(logout_handler);
+
     conf.service(scope);
 }
