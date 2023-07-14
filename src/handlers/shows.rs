@@ -1,9 +1,11 @@
-use crate::{
-    models::shows::{
-        CreateShowSchema, DeleteShowSchema, GetUserShowsSchema, ShowModel, UpdateShowSchema,
+use crate::models::{
+    app::AppState,
+    shows::{
+        filter_db_record, CreateShowBody, DeleteShowParams, GetUserShowsParams, ShowModel,
+        ShowModelSql, UpdateShowBody,
     },
-    AppState,
 };
+use crate::services::authenticate_token::AuthenticationGuard;
 
 use actix_web::{
     delete, get, patch, post,
@@ -12,18 +14,20 @@ use actix_web::{
 };
 use serde_json::json;
 
-// endpoints
-
 #[get("")]
 async fn get_all_shows(data: Data<AppState>) -> impl Responder {
     // need to implement pagination
-    match sqlx::query_as!(ShowModel, "SELECT * FROM shows")
+    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows")
         .fetch_all(&data.db)
         .await
     {
         Ok(result) => {
+            let shows = result
+                .into_iter()
+                .map(|show| filter_db_record(&show))
+                .collect::<Vec<ShowModel>>();
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "shows": result
+                "shows": shows
             })});
             return HttpResponse::Ok().json(json_response);
         }
@@ -36,16 +40,16 @@ async fn get_all_shows(data: Data<AppState>) -> impl Responder {
 }
 
 #[get("/{id}")]
-async fn get_show_by_id(path: Path<String>, data: Data<AppState>) -> HttpResponse {
+async fn get_show_by_id(path: Path<String>, data: Data<AppState>) -> impl Responder {
     let show_id = path.into_inner().to_string();
 
-    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
+    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows WHERE id = ?", show_id)
         .fetch_one(&data.db)
         .await
     {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "show": result
+                "show": filter_db_record(&result)
             })});
             return HttpResponse::Ok().json(json_response);
         }
@@ -64,23 +68,31 @@ async fn get_show_by_id(path: Path<String>, data: Data<AppState>) -> HttpRespons
 #[get("/users/{id}")]
 async fn get_all_user_shows(
     path: Path<String>,
-    params: Query<GetUserShowsSchema>,
+    params: Query<GetUserShowsParams>,
     data: Data<AppState>,
 ) -> impl Responder {
     let favorites = params.favorites;
     let user_id = path.into_inner().to_string();
 
-    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE owner_id = ?", user_id)
-        .fetch_all(&data.db)
-        .await
+    match sqlx::query_as!(
+        ShowModelSql,
+        "SELECT * FROM shows WHERE owner_id = ?",
+        user_id
+    )
+    .fetch_all(&data.db)
+    .await
     {
         Ok(result) => {
             if result.len() == 0 {
                 let json_response = serde_json::json!({ "status": "error","message": format!("No shows are associated with this user: {}", user_id)});
                 return HttpResponse::NotFound().json(json!(json_response));
             }
+            let shows = result
+                .into_iter()
+                .map(|show| filter_db_record(&show))
+                .collect::<Vec<ShowModel>>();
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "shows": result
+                "shows": shows
             })});
             return HttpResponse::Ok().json(json_response);
         }
@@ -93,16 +105,22 @@ async fn get_all_user_shows(
 }
 
 #[post("")]
-async fn new_show(body: Json<CreateShowSchema>, data: Data<AppState>) -> impl Responder {
+async fn new_show(
+    body: Json<CreateShowBody>,
+    auth_guard: AuthenticationGuard,
+    data: Data<AppState>,
+) -> impl Responder {
     let show_id = uuid::Uuid::new_v4().to_string();
+    let user_id = auth_guard.user_id.to_owned();
 
     let query_result = sqlx::query(
-        "INSERT INTO shows (id,owner_id,title,description,view_code) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO shows (id, owner_id, title, description, public, view_code) VALUES (?, ?, ?, ?, ?, NULLIF(?, ''))",
     )
     .bind(show_id.clone())
-    .bind(body.owner_id.to_string())
+    .bind(user_id.to_string())
     .bind(body.title.to_string())
     .bind(body.description.to_string())
+    .bind(body.public)
     .bind(body.view_code.to_owned().unwrap_or_default())
     .execute(&data.db)
     .await
@@ -123,15 +141,14 @@ async fn new_show(body: Json<CreateShowSchema>, data: Data<AppState>) -> impl Re
             .json(serde_json::json!({"status": "error","message": format!("{:?}", err)}));
     }
 
-    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
+    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows WHERE id = ?", show_id)
         .fetch_one(&data.db)
         .await
     {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "show": result
+                "show": filter_db_record(&result)
             })});
-
             return HttpResponse::Ok().json(json_response);
         }
         Err(err) => {
@@ -144,18 +161,22 @@ async fn new_show(body: Json<CreateShowSchema>, data: Data<AppState>) -> impl Re
 #[patch("/{id}")]
 async fn edit_show(
     path: Path<uuid::Uuid>,
-    body: Json<UpdateShowSchema>,
+    body: Json<UpdateShowBody>,
+    auth_guard: AuthenticationGuard,
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
+    let user_id = auth_guard.user_id.to_owned();
 
     match sqlx::query(
-        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ?",
+        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), public = COALESCE(NULLIF(?, ''), public), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND owner_id = ?",
     )
     .bind(body.title.to_owned().unwrap_or_default())
     .bind(body.description.to_owned().unwrap_or_default())
+    .bind(body.public.to_owned().unwrap_or_default())
     .bind(body.view_code.to_owned().unwrap_or_default())
     .bind(show_id.to_owned())
+    .bind(user_id)
     .execute(&data.db)
     .await {
         Ok(result) => {
@@ -177,13 +198,13 @@ async fn edit_show(
         }
     }
 
-    match sqlx::query_as!(ShowModel, "SELECT * FROM shows WHERE id = ?", show_id)
+    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows WHERE id = ?", show_id)
         .fetch_one(&data.db)
         .await
     {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "show": result
+                "show": filter_db_record(&result)
             })});
             return HttpResponse::Ok().json(json_response);
         }
@@ -202,15 +223,20 @@ async fn edit_show(
 #[delete("/{id}")]
 async fn delete_show(
     path: Path<String>,
-    params: Query<DeleteShowSchema>,
+    // params: Query<DeleteShowParams>,
+    auth_guard: AuthenticationGuard,
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
-    let owner_id = &params.owner_id;
+    let user_id = auth_guard.user_id.to_owned();
 
-    match sqlx::query!("DELETE FROM shows WHERE id = ?", show_id)
-        .execute(&data.db)
-        .await
+    match sqlx::query!(
+        "DELETE FROM shows WHERE id = ? AND owner_id = ?",
+        show_id,
+        user_id
+    )
+    .execute(&data.db)
+    .await
     {
         Ok(show) => {
             if show.rows_affected() == 0 {
@@ -227,8 +253,6 @@ async fn delete_show(
         }
     };
 }
-
-// config
 
 pub fn config(conf: &mut web::ServiceConfig) {
     let scope = web::scope("/shows")
