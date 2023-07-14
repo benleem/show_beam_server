@@ -1,5 +1,6 @@
 #[derive(Debug, Clone)]
 pub struct Config {
+    pub cookie_domain: String,
     pub client_origin: String,
     pub jwt_secret: String,
     pub jwt_expires_in: String,
@@ -11,6 +12,7 @@ pub struct Config {
 
 impl Config {
     pub fn init() -> Config {
+        let cookie_domain = std::env::var("COOKIE_DOMAIN").expect("COOKIE_DOMAIN must be set");
         let client_origin = std::env::var("CLIENT_ORIGIN").expect("CLIENT_ORIGIN must be set");
         let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
         let jwt_expires_in =
@@ -24,6 +26,7 @@ impl Config {
             .expect("GITHUB_OAUTH_REDIRECT_URL must be set");
 
         Config {
+            cookie_domain,
             client_origin,
             jwt_secret,
             jwt_expires_in,
