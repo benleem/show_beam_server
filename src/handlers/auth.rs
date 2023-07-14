@@ -122,7 +122,7 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
         .path("/")
         .max_age(ActixWebDuration::new(60 * data.env.jwt_max_age, 0))
         .http_only(true)
-        // .secure(true) //for production
+        .secure(true) //for production
         .same_site(SameSite::Strict)
         .finish();
 
