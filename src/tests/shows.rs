@@ -34,7 +34,7 @@ async fn new_show_test() -> String {
     use actix_web::test;
 
     let show_body = CreateShowBody {
-        owner_id: "99999".to_string(),
+        // owner_id: "99999".to_string(),
         title: "Sample Show".to_string(),
         description: "Sample Description".to_string(),
         public: true,
