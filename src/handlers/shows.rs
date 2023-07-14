@@ -74,14 +74,20 @@ async fn get_all_user_shows(
     let favorites = params.favorites;
     let user_id = path.into_inner().to_string();
 
-    match sqlx::query_as!(
-        ShowModelSql,
-        "SELECT * FROM shows WHERE owner_id = ?",
-        user_id
+    let query_result = match favorites {
+    true => sqlx::query_as::<_, ShowModelSql>("SELECT * FROM shows WHERE owner_id = ?")
+        .bind(&user_id)
+        .fetch_all(&data.db)
+        .await,
+    false => sqlx::query_as::<_, ShowModelSql>(
+        "SELECT shows.* FROM shows INNER JOIN favorites ON shows.owner_id = favorites.owner_id WHERE favorites.owner_id = ?"
     )
-    .fetch_all(&data.db)
-    .await
-    {
+        .bind(&user_id)
+        .fetch_all(&data.db)
+        .await,
+    };
+
+    match query_result {
         Ok(result) => {
             if result.len() == 0 {
                 let json_response = serde_json::json!({ "status": "error","message": format!("No shows are associated with this user: {}", user_id)});
