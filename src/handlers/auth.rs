@@ -118,7 +118,7 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
     .unwrap();
 
     let cookie = Cookie::build("token", token)
-        .domain("localhost")
+        .domain(data.env.client_origin.to_owned())
         .path("/")
         .max_age(ActixWebDuration::new(60 * data.env.jwt_max_age, 0))
         .http_only(true)
@@ -155,9 +155,9 @@ async fn get_current_user(auth_guard: AuthenticationGuard, data: Data<AppState>)
 }
 
 #[get("/logout")]
-async fn logout_handler(_: AuthenticationGuard) -> impl Responder {
+async fn logout_handler(_: AuthenticationGuard, data: Data<AppState>) -> impl Responder {
     let cookie = Cookie::build("token", "")
-        .domain("localhost")
+        .domain(data.env.client_origin.to_owned())
         .path("/")
         .max_age(ActixWebDuration::new(-1, 0))
         .http_only(true)
