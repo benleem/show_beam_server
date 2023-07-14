@@ -58,15 +58,15 @@ async fn new_show_test() -> String {
 }
 
 #[allow(unused)]
-async fn get_all_user_shows_test() -> bool {
-    use crate::handlers::shows::get_all_user_shows;
+async fn get_user_shows_test() -> bool {
+    use crate::handlers::shows::get_user_shows;
     use crate::models::shows::GetUserShowsParams;
     use actix_web::test;
 
     let show_body = GetUserShowsParams { favorites: false };
 
     let user_id = "99999".to_string();
-    let app = init::init("/shows", get_all_user_shows).await;
+    let app = init::init("/shows", get_user_shows).await;
     let req = test::TestRequest::get()
         .uri(&format!("/shows/users/{user_id}"))
         .set_json(&show_body)

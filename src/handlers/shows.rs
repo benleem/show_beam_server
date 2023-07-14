@@ -66,7 +66,7 @@ async fn get_show_by_id(path: Path<String>, data: Data<AppState>) -> impl Respon
 }
 
 #[get("/users/{id}")]
-async fn get_all_user_shows(
+async fn get_user_shows(
     path: Path<String>,
     params: Query<GetUserShowsParams>,
     data: Data<AppState>,
@@ -263,7 +263,7 @@ async fn delete_show(
 pub fn config(conf: &mut web::ServiceConfig) {
     let scope = web::scope("/shows")
         .service(get_all_shows)
-        .service(get_all_user_shows)
+        .service(get_user_shows)
         .service(get_show_by_id)
         .service(new_show)
         .service(edit_show)
