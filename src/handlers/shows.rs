@@ -6,7 +6,6 @@ use crate::models::{
     },
 };
 use crate::services::authenticate_token::AuthenticationGuard;
-
 use actix_web::{
     delete, get, patch, post,
     web::{self, Data, Json, Path, Query},
