@@ -18,6 +18,7 @@ impl FromRequest for AuthenticationGuard {
     type Future = Ready<Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+        println!("{:?}", req);
         let token = req
             .cookie("token")
             .map(|c| c.value().to_string())
@@ -26,7 +27,6 @@ impl FromRequest for AuthenticationGuard {
                     .get(http::header::AUTHORIZATION)
                     .map(|h| h.to_str().unwrap().split_at(7).1.to_string())
             });
-        println!("{:?}", token);
 
         if token.is_none() {
             return ready(Err(ErrorUnauthorized(
