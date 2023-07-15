@@ -69,7 +69,7 @@ async fn main() -> std::io::Result<()> {
 
 #[get("/")]
 async fn get_home() -> impl Responder {
-    let json_response = serde_json::json!({"status": "success","message": "Welcome to the Mark Slide api"
+    let json_response = serde_json::json!({"status": "success","message": "Welcome to the ShowBeam api"
     });
     HttpResponse::Ok().json(json_response)
 }

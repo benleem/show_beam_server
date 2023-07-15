@@ -1,5 +1,5 @@
 [package]
-name = "mark_slide_server"
+name = "show_beam_server"
 version = "0.1.0"
 edition = "2021"
 
