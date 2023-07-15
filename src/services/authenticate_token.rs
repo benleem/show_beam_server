@@ -26,6 +26,7 @@ impl FromRequest for AuthenticationGuard {
                     .get(http::header::AUTHORIZATION)
                     .map(|h| h.to_str().unwrap().split_at(7).1.to_string())
             });
+        println!("{:?}", token);
 
         if token.is_none() {
             return ready(Err(ErrorUnauthorized(
