@@ -5,7 +5,7 @@ use sqlx::FromRow;
 #[derive(Debug, Deserialize, Serialize, FromRow)]
 pub struct ShowModelSql {
     pub id: String,
-    pub owner_id: String,
+    pub owner_id: u32,
     pub title: String,
     pub description: String,
     pub public: i8, //sql doesn't have bool :(
@@ -17,7 +17,7 @@ pub struct ShowModelSql {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ShowModel {
     pub id: String,
-    pub owner_id: String,
+    pub owner_id: u32,
     pub title: String,
     pub description: String,
     pub public: bool,
@@ -56,7 +56,7 @@ pub struct UpdateShowBody {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DeleteShowParams {
-    pub owner_id: String,
+    pub owner_id: u32,
 }
 
 // response and request structs for hitting the /shows endpoint
