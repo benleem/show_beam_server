@@ -6,7 +6,17 @@ use sqlx::FromRow;
 pub struct SlideModelSql {
     pub id: String,
     pub show_id: String,
-    pub owner_id: String,
+    pub owner_id: u32,
+    pub content: String,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SlideModel {
+    pub id: String,
+    pub show_id: String,
+    pub owner_id: u32,
     pub content: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
@@ -21,11 +31,20 @@ pub struct CreateSlideBody {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateSlideBody {
     pub content: String,
-    pub updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct DeleteSLideParams {
-    pub id: String,
-    pub owner_id: String,
+pub struct DeleteSlideParams {
+    pub owner_id: u32,
+}
+
+pub fn filter_db_record(show: &SlideModelSql) -> SlideModel {
+    SlideModel {
+        id: show.id.to_owned(),
+        show_id: show.show_id.to_owned(),
+        owner_id: show.owner_id.to_owned(),
+        content: show.content.to_owned(),
+        created_at: show.created_at,
+        updated_at: show.updated_at,
+    }
 }
