@@ -10,6 +10,42 @@ use actix_web::{
 };
 use serde_json::json;
 
+#[get("/{show_id}")]
+async fn get_slides_of_show(
+    path: Path<String>,
+    auth_guard: AuthenticationGuard,
+    data: Data<AppState>,
+) -> impl Responder {
+    let show_id = path.into_inner().to_string();
+    let user_id = auth_guard.user_id.to_owned();
+
+    match sqlx::query_as!(
+        SlideModelSql,
+        "SELECT * FROM slides WHERE show_id = ? AND owner_id = ?",
+        show_id,
+        user_id
+    )
+    .fetch_one(&data.db)
+    .await
+    {
+        Ok(result) => {
+            let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
+                "slide": crate::models::slides::filter_db_record(&result)
+            })});
+            return HttpResponse::Ok().json(json_response);
+        }
+        Err(sqlx::Error::RowNotFound) => {
+            let json_response = serde_json::json!({"status": "fail","message": format!("Slide with id: {} not found", show_id)});
+            return HttpResponse::NotFound().json(json!(json_response));
+        }
+        Err(err) => {
+            let json_response =
+                serde_json::json!({ "status": "error","message": format!("{:?}", err) });
+            return HttpResponse::InternalServerError().json(json!(json_response));
+        }
+    };
+}
+
 #[post("")]
 async fn new_slide(
     body: Json<CreateSlideBody>,
@@ -17,13 +53,16 @@ async fn new_slide(
     data: Data<AppState>,
 ) -> impl Responder {
     let slide_id = uuid::Uuid::new_v4().to_string();
-    let query_result = sqlx::query("INSERT INTO slides (id, show_id, content) VALUES (?, ?, ?))")
-        .bind(slide_id.clone())
-        .bind(body.show_id.to_string())
-        .bind(body.content.to_string())
-        .execute(&data.db)
-        .await
-        .map_err(|err: sqlx::Error| err.to_string());
+    let user_id = auth_guard.user_id.to_owned();
+    let query_result =
+        sqlx::query("INSERT INTO slides (id, show_id, owner_id, content) VALUES (?, ?, ?, ?))")
+            .bind(slide_id.clone())
+            .bind(body.show_id.to_string())
+            .bind(user_id.to_string())
+            .bind(body.content.to_string())
+            .execute(&data.db)
+            .await
+            .map_err(|err: sqlx::Error| err.to_string());
 
     if let Err(err) = query_result {
         if err.contains("Duplicate entry") && err.contains("'slides.id'") {
@@ -41,7 +80,7 @@ async fn new_slide(
     {
         Ok(result) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "slide": filter_db_record(&result)
+                "slide": crate::models::slides::filter_db_record(&result)
             })});
             return HttpResponse::Ok().json(json_response);
         }
@@ -60,10 +99,12 @@ async fn edit_slide(
     data: Data<AppState>,
 ) -> impl Responder {
     let slide_id = path.into_inner().to_string();
+    let user_id = auth_guard.user_id.to_owned();
 
-    match sqlx::query("UPDATE slides SET content = ? WHERE id = ?")
+    match sqlx::query("UPDATE slides SET content = ? WHERE id = ? AND owner_id = ?")
         .bind(body.content.to_owned())
         .bind(slide_id.to_owned())
+        .bind(user_id.to_string())
         .execute(&data.db)
         .await
     {
@@ -110,10 +151,19 @@ async fn delete_slide(
     data: Data<AppState>,
 ) -> impl Responder {
     let slide_id = path.into_inner().to_string();
+    let user_id = auth_guard.user_id.to_owned();
 
-    match sqlx::query!("DELETE FROM slides WHERE id = ?", slide_id,)
-        .execute(&data.db)
-        .await
+    if user_id != params.owner_id.to_string() {
+        return HttpResponse::Unauthorized().finish();
+    }
+
+    match sqlx::query!(
+        "DELETE FROM slides WHERE id = ? AND owner_id = ?",
+        slide_id,
+        user_id
+    )
+    .execute(&data.db)
+    .await
     {
         Ok(slide) => {
             if slide.rows_affected() == 0 {
@@ -133,9 +183,7 @@ async fn delete_slide(
 
 pub fn config(conf: &mut web::ServiceConfig) {
     let scope = web::scope("/slides")
-        // .service(get_all_shows)
-        // .service(get_user_shows)
-        // .service(get_show_by_id)
+        .service(get_slides_of_show)
         .service(new_slide)
         .service(edit_slide)
         .service(delete_slide);
