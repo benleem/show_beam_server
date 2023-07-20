@@ -74,12 +74,12 @@ async fn get_user_shows(
     let user_id = path.into_inner().to_string();
 
     let query_result = match favorites {
-    true => sqlx::query_as::<_, ShowModelSql>("SELECT * FROM shows WHERE owner_id = ?")
+    false => sqlx::query_as::<_, ShowModelSql>("SELECT * FROM shows WHERE user_id = ?")
         .bind(&user_id)
         .fetch_all(&data.db)
         .await,
-    false => sqlx::query_as::<_, ShowModelSql>(
-        "SELECT shows.* FROM shows INNER JOIN favorites ON shows.owner_id = favorites.owner_id WHERE favorites.owner_id = ?"
+    true => sqlx::query_as::<_, ShowModelSql>(
+        "SELECT * FROM shows INNER JOIN favorites ON shows.user_id = favorites.user_id WHERE favorites.user_id = ?"
     )
         .bind(&user_id)
         .fetch_all(&data.db)
@@ -119,7 +119,7 @@ async fn new_show(
     let user_id = auth_guard.user_id.to_owned();
 
     let query_result = sqlx::query(
-        "INSERT INTO shows (id, owner_id, title, description, public, view_code) VALUES (?, ?, ?, ?, ?, NULLIF(?, ''))",
+        "INSERT INTO shows (id, user_id, title, description, public, view_code) VALUES (?, ?, ?, ?, ?, NULLIF(?, ''))",
     )
     .bind(show_id.clone())
     .bind(user_id.to_string())
@@ -174,7 +174,7 @@ async fn edit_show(
     let user_id = auth_guard.user_id.to_owned();
 
     match sqlx::query(
-        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), public = COALESCE(NULLIF(?, ''), public), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND owner_id = ?",
+        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), public = COALESCE(NULLIF(?, ''), public), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND user_id = ?",
     )
     .bind(body.title.to_owned().unwrap_or_default())
     .bind(body.description.to_owned().unwrap_or_default())
@@ -236,7 +236,7 @@ async fn delete_show(
     let user_id = auth_guard.user_id.to_owned();
 
     match sqlx::query!(
-        "DELETE FROM shows WHERE id = ? AND owner_id = ?",
+        "DELETE FROM shows WHERE id = ? AND user_id = ?",
         show_id,
         user_id
     )

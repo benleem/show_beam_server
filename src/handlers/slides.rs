@@ -21,7 +21,7 @@ async fn get_slides_of_show(
 
     match sqlx::query_as!(
         SlideModelSql,
-        "SELECT * FROM slides WHERE show_id = ? AND owner_id = ?",
+        "SELECT * FROM slides WHERE show_id = ? AND user_id = ?",
         show_id,
         user_id
     )
@@ -55,7 +55,7 @@ async fn new_slide(
     let slide_id = uuid::Uuid::new_v4().to_string();
     let user_id = auth_guard.user_id.to_owned();
     let query_result =
-        sqlx::query("INSERT INTO slides (id, show_id, owner_id, content) VALUES (?, ?, ?, ?))")
+        sqlx::query("INSERT INTO slides (id, show_id, user_id, content) VALUES (?, ?, ?, ?))")
             .bind(slide_id.clone())
             .bind(body.show_id.to_string())
             .bind(user_id.to_string())
@@ -101,7 +101,7 @@ async fn edit_slide(
     let slide_id = path.into_inner().to_string();
     let user_id = auth_guard.user_id.to_owned();
 
-    match sqlx::query("UPDATE slides SET content = ? WHERE id = ? AND owner_id = ?")
+    match sqlx::query("UPDATE slides SET content = ? WHERE id = ? AND user_id = ?")
         .bind(body.content.to_owned())
         .bind(slide_id.to_owned())
         .bind(user_id.to_string())
@@ -153,12 +153,12 @@ async fn delete_slide(
     let slide_id = path.into_inner().to_string();
     let user_id = auth_guard.user_id.to_owned();
 
-    if user_id != params.owner_id.to_string() {
+    if user_id != params.user_id.to_string() {
         return HttpResponse::Unauthorized().finish();
     }
 
     match sqlx::query!(
-        "DELETE FROM slides WHERE id = ? AND owner_id = ?",
+        "DELETE FROM slides WHERE id = ? AND user_id = ?",
         slide_id,
         user_id
     )

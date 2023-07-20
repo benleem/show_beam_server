@@ -2,6 +2,23 @@ use super::init;
 #[cfg(test)]
 use actix_web::test;
 
+async fn get_user_shows_works() {
+    use crate::handlers::shows::get_user_shows;
+    use crate::models::shows::GetUserShowsParams;
+    use crate::tests::init::MockAuthenticationGuard;
+    let app = init::init("/shows", get_all_shows).await;
+
+    // Perform your test request using the test::call_service function
+    let req = test::TestRequest::get()
+        .uri("/api/some_endpoint")
+        .header(http::header::COOKIE, "token=your_mocked_token")
+        .to_request();
+    let resp = test::call_service(&mut app, req).await;
+
+    // Assert the response as needed for your test case
+    assert!(resp.status().is_success());
+}
+
 #[actix_web::test]
 async fn get_all_shows_test() {
     use crate::handlers::shows::get_all_shows;
@@ -132,7 +149,7 @@ async fn delete_show_test(id: &str) -> bool {
     use actix_web::test;
 
     // let show_body = DeleteShowParams {
-    //     owner_id: "99999".to_string(),
+    //     user_id: "99999".to_string(),
     // };
 
     let app = init::init("/shows", delete_show).await;
