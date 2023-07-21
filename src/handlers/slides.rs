@@ -1,6 +1,9 @@
 use crate::models::{
     app::AppState,
-    slides::{CreateSlideBody, DeleteSlideParams, SlideModelSql, UpdateSlideBody},
+    slides::{
+        filter_db_record, CreateSlideBody, DeleteSlideParams, SlideModel, SlideModelSql,
+        UpdateSlideBody,
+    },
 };
 use crate::services::authenticate_token::AuthenticationGuard;
 use actix_web::{
@@ -25,17 +28,22 @@ async fn get_slides_of_show(
         show_id,
         user_id
     )
-    .fetch_one(&data.db)
+    .fetch_all(&data.db)
     .await
     {
         Ok(result) => {
+            let slides = result
+                .into_iter()
+                .map(|slide| filter_db_record(&slide))
+                .collect::<Vec<SlideModel>>();
+
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "slide": crate::models::slides::filter_db_record(&result)
+                "slides": slides
             })});
             return HttpResponse::Ok().json(json_response);
         }
         Err(sqlx::Error::RowNotFound) => {
-            let json_response = serde_json::json!({"status": "fail","message": format!("Slide with id: {} not found", show_id)});
+            let json_response = serde_json::json!({"status": "fail","message": format!("Slides where show id = {} not found", show_id)});
             return HttpResponse::NotFound().json(json!(json_response));
         }
         Err(err) => {
