@@ -55,6 +55,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(models::app::AppState::init(&pool)))
             .configure(auth::config)
+            .configure(favorites::config)
             .configure(users::config)
             .configure(shows::config)
             .configure(slides::config)
