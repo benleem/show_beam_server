@@ -1,5 +1,5 @@
 mod handlers;
-use handlers::{auth, shows, users};
+use handlers::{auth, shows, slides, users};
 mod config;
 mod models;
 mod services;
@@ -56,9 +56,11 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(models::app::AppState::init(&pool)))
             .configure(auth::config)
+            .configure(favorites::config)
             .configure(users::config)
-            .service(get_home)
             .configure(shows::config)
+            .configure(slides::config)
+            .service(get_home)
             .wrap(cors)
             .wrap(Logger::default())
     })
