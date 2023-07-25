@@ -1,5 +1,5 @@
 mod handlers;
-use handlers::{auth, shows, slides, users};
+use handlers::{auth, favorites, shows, slides, users};
 mod config;
 mod models;
 mod services;

@@ -2,7 +2,6 @@
 pub struct Config {
     pub cookie_domain: String,
     pub client_origin: String,
-    pub cookie_domain: String,
     pub jwt_secret: String,
     pub jwt_expires_in: String,
     pub jwt_max_age: i64,
@@ -15,7 +14,6 @@ impl Config {
     pub fn init() -> Config {
         let cookie_domain = std::env::var("COOKIE_DOMAIN").expect("COOKIE_DOMAIN must be set");
         let client_origin = std::env::var("CLIENT_ORIGIN").expect("CLIENT_ORIGIN must be set");
-        let cookie_domain = std::env::var("COOKIE_DOMAIN").expect("COOKIE_DOMAIN must be set");
         let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
         let jwt_expires_in =
             std::env::var("TOKEN_EXPIRED_IN").expect("TOKEN_EXPIRED_IN must be set");
@@ -30,7 +28,6 @@ impl Config {
         Config {
             cookie_domain,
             client_origin,
-            cookie_domain,
             jwt_secret,
             jwt_expires_in,
             jwt_max_age: jwt_max_age.parse::<i64>().unwrap(),
