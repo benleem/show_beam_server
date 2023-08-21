@@ -248,7 +248,10 @@ async fn delete_show(
                 let json_response = serde_json::json!({ "status": "fail","message": format!("Show with ID: {} not found", show_id) });
                 return HttpResponse::NotFound().json(json_response);
             } else {
-                return HttpResponse::NoContent().finish();
+                let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
+                    "show": show_id
+                })});
+                return HttpResponse::Ok().json(json_response);
             }
         }
         Err(err) => {
