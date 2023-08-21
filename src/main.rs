@@ -11,7 +11,6 @@ use actix_web::{
 };
 
 use dotenv::dotenv;
-// use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use sqlx::mysql::MySqlPoolOptions;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
