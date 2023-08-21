@@ -186,7 +186,8 @@ async fn edit_show(
     .await {
         Ok(result) => {
             if result.rows_affected() == 0 {
-                let json_response = serde_json::json!({ "status": "error","message": format!("Show with ID: {} not found", show_id)});
+                println!("{:?}",result);
+                let json_response = serde_json::json!({ "status": "error","message": format!("This show is not associated with the current user")});
                 return HttpResponse::NotFound().json(json!(json_response));
             }
         }
@@ -245,7 +246,7 @@ async fn delete_show(
     {
         Ok(show) => {
             if show.rows_affected() == 0 {
-                let json_response = serde_json::json!({ "status": "fail","message": format!("Show with ID: {} not found", show_id) });
+                let json_response = serde_json::json!({ "status": "fail","message": format!("This show is not associated with the current user") });
                 return HttpResponse::NotFound().json(json_response);
             } else {
                 let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
