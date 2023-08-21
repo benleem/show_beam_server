@@ -119,7 +119,7 @@ async fn new_slide(
     };
 
     let query_result = sqlx::query(
-        "INSERT INTO slides (id, show_id, user_id, content, index_number) VALUES (?, ?, ?, ?, ?))",
+        "INSERT INTO slides (id, show_id, user_id, content, index_number) VALUES (?, ?, ?, ?, ?)",
     )
     .bind(slide_id.clone())
     .bind(body.show_id.to_string())
