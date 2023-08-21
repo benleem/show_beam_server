@@ -9,6 +9,7 @@ use actix_cors::Cors;
 use actix_web::{
     get, http::header, middleware::Logger, web, App, HttpResponse, HttpServer, Responder,
 };
+
 use dotenv::dotenv;
 // use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use sqlx::mysql::MySqlPoolOptions;
@@ -20,6 +21,7 @@ async fn main() -> std::io::Result<()> {
 
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let base_url = std::env::var("BASE_URL").expect("BASE_URL must be set");
+    let client_origin = std::env::var("CLIENT_ORIGIN").expect("CLIENT_ORIGIN must be set");
     let port = std::env::var("PORT")
         .expect("PORT must be set")
         .parse::<u16>()
@@ -44,7 +46,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         let cors = Cors::default()
-            .allowed_origin("http://localhost:3000")
+            .allowed_origin(&client_origin)
             .allowed_methods(vec!["GET", "POST", "PATCH", "DELETE"])
             .allowed_headers(vec![
                 header::CONTENT_TYPE,
@@ -70,7 +72,7 @@ async fn main() -> std::io::Result<()> {
 
 #[get("/")]
 async fn get_home() -> impl Responder {
-    let json_response = serde_json::json!({"status": "success","message": "Welcome to the Mark Slide api"
+    let json_response = serde_json::json!({"status": "success","message": "Welcome to the ShowBeam api"
     });
     HttpResponse::Ok().json(json_response)
 }

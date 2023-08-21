@@ -161,6 +161,7 @@ async fn logout_handler(_: AuthenticationGuard, data: Data<AppState>) -> impl Re
         .path("/")
         .max_age(ActixWebDuration::new(-1, 0))
         .http_only(true)
+        // .secure(true) //for production
         .same_site(SameSite::Strict)
         .finish();
 

@@ -18,6 +18,7 @@ impl FromRequest for AuthenticationGuard {
     type Future = Ready<Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+        println!("{:?}", req);
         let token = req
             .cookie("token")
             .map(|c| c.value().to_string())
