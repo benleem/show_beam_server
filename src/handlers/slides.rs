@@ -13,6 +13,49 @@ use actix_web::{
 };
 use serde_json::json;
 
+// async fn get_slide_by_index(body: GetSlideByIndexBody, data: Data<AppState>) -> SlideModelSql {
+//     match sqlx::query_as!(
+//         SlideModelSql,
+//         "SELECT * FROM slides WHERE show_id = ? AND index_number = ?",
+//         body.show_id,
+//         body.index_number
+//     )
+//     .fetch_one(&data.db)
+//     .await
+//     {
+//         Ok(result) => result,
+//         Err(_) => panic!("No slide with that show ID or index"),
+//     }
+// }
+
+async fn reorder_slide_indices_after_removal(
+    show_id: String,
+    data: Data<AppState>,
+) -> Result<(), sqlx::Error> {
+    let slides = match sqlx::query_as!(
+        SlideModelSql,
+        "SELECT * FROM slides WHERE show_id = ?",
+        show_id,
+    )
+    .fetch_all(&data.db)
+    .await
+    {
+        Ok(result) => result,
+        Err(_) => panic!("No slides with that show ID"),
+    };
+
+    for (i, s) in slides.into_iter().enumerate() {
+        sqlx::query!(
+            "UPDATE slides SET index_number = ? WHERE slide_id = ?",
+            i as i32,
+            s.id
+        )
+        .execute(&data.db)
+        .await?;
+    }
+    Ok(())
+}
+
 #[get("/{show_id}")]
 async fn get_slides_of_show(
     path: Path<String>,
@@ -62,15 +105,30 @@ async fn new_slide(
 ) -> impl Responder {
     let slide_id = uuid::Uuid::new_v4().to_string();
     let user_id = auth_guard.user_id.to_owned();
-    let query_result =
-        sqlx::query("INSERT INTO slides (id, show_id, user_id, content) VALUES (?, ?, ?, ?))")
-            .bind(slide_id.clone())
-            .bind(body.show_id.to_string())
-            .bind(user_id.to_string())
-            .bind(body.content.to_string())
-            .execute(&data.db)
-            .await
-            .map_err(|err: sqlx::Error| err.to_string());
+    let amt_existing_slides = match sqlx::query_as!(
+        SlideModelSql,
+        "SELECT * FROM slides WHERE show_id = ? AND user_id = ?",
+        body.show_id,
+        user_id
+    )
+    .fetch_all(&data.db)
+    .await
+    {
+        Ok(result) => result.len(),
+        Err(_) => 0,
+    };
+
+    let query_result = sqlx::query(
+        "INSERT INTO slides (id, show_id, user_id, content, index_number) VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(slide_id.clone())
+    .bind(body.show_id.to_string())
+    .bind(user_id.to_string())
+    .bind(body.content.to_string())
+    .bind(amt_existing_slides as u32)
+    .execute(&data.db)
+    .await
+    .map_err(|err: sqlx::Error| err.to_string());
 
     if let Err(err) = query_result {
         if err.contains("Duplicate entry") && err.contains("'slides.id'") {
@@ -109,12 +167,15 @@ async fn edit_slide(
     let slide_id = path.into_inner().to_string();
     let user_id = auth_guard.user_id.to_owned();
 
-    match sqlx::query("UPDATE slides SET content = ? WHERE id = ? AND user_id = ?")
-        .bind(body.content.to_owned())
-        .bind(slide_id.to_owned())
-        .bind(user_id.to_string())
-        .execute(&data.db)
-        .await
+    match sqlx::query(
+        "UPDATE slides SET content = ?, index_number = ? WHERE id = ? AND user_id = ?",
+    )
+    .bind(body.content.to_owned())
+    .bind(body.index_number)
+    .bind(slide_id.to_owned())
+    .bind(user_id.to_string())
+    .execute(&data.db)
+    .await
     {
         Ok(result) => {
             if result.rows_affected() == 0 {
@@ -178,6 +239,11 @@ async fn delete_slide(
                 let json_response = serde_json::json!({ "status": "fail","message": format!("slide with ID: {} not found", slide_id) });
                 return HttpResponse::NotFound().json(json_response);
             } else {
+                assert!(
+                    reorder_slide_indices_after_removal(params.show_id.clone(), data)
+                        .await
+                        .is_ok()
+                );
                 return HttpResponse::NoContent().finish();
             }
         }

@@ -7,6 +7,7 @@ pub struct SlideModelSql {
     pub id: String,
     pub show_id: String,
     pub user_id: u32,
+    pub index_number: i32,
     pub content: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
@@ -17,6 +18,7 @@ pub struct SlideModel {
     pub id: String,
     pub show_id: String,
     pub user_id: u32,
+    pub index_number: i32,
     pub content: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
@@ -31,20 +33,23 @@ pub struct CreateSlideBody {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateSlideBody {
     pub content: String,
+    pub index_number: i32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DeleteSlideParams {
     pub user_id: u32,
+    pub show_id: String,
 }
 
-pub fn filter_db_record(show: &SlideModelSql) -> SlideModel {
+pub fn filter_db_record(slide: &SlideModelSql) -> SlideModel {
     SlideModel {
-        id: show.id.to_owned(),
-        show_id: show.show_id.to_owned(),
-        user_id: show.user_id.to_owned(),
-        content: show.content.to_owned(),
-        created_at: show.created_at,
-        updated_at: show.updated_at,
+        id: slide.id.to_owned(),
+        show_id: slide.show_id.to_owned(),
+        user_id: slide.user_id.to_owned(),
+        index_number: slide.index_number.to_owned(),
+        content: slide.content.to_owned(),
+        created_at: slide.created_at,
+        updated_at: slide.updated_at,
     }
 }
