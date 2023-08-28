@@ -174,7 +174,7 @@ async fn edit_show(
     let user_id = auth_guard.user_id.to_owned();
 
     match sqlx::query(
-        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), public = COALESCE(NULLIF(?, ''), public), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND user_id = ?",
+        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), public = COALESCE(NULLIF(?, NULL), public), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND user_id = ?",
     )
     .bind(body.title.to_owned().unwrap_or_default())
     .bind(body.description.to_owned().unwrap_or_default())
@@ -186,7 +186,6 @@ async fn edit_show(
     .await {
         Ok(result) => {
             if result.rows_affected() == 0 {
-                println!("{:?}",result);
                 let json_response = serde_json::json!({ "status": "error","message": format!("This show is not associated with the current user")});
                 return HttpResponse::NotFound().json(json!(json_response));
             }
