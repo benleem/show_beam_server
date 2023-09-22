@@ -16,9 +16,12 @@ use serde_json::json;
 #[get("")]
 async fn get_all_shows(data: Data<AppState>) -> impl Responder {
     // need to implement pagination
-    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows where public = 1")
-        .fetch_all(&data.db)
-        .await
+    match sqlx::query_as!(
+        ShowModelSql,
+        "SELECT * FROM shows where public = 1 ORDER BY updated_at DESC"
+    )
+    .fetch_all(&data.db)
+    .await
     {
         Ok(result) => {
             let shows = result
@@ -74,12 +77,12 @@ async fn get_user_shows(
     let user_id = path.into_inner().to_string();
 
     let query_result = match favorites {
-    false => sqlx::query_as::<_, ShowModelSql>("SELECT * FROM shows WHERE user_id = ?")
+    false => sqlx::query_as::<_, ShowModelSql>("SELECT * FROM shows WHERE user_id = ? ORDER BY updated_at DESC")
         .bind(&user_id)
         .fetch_all(&data.db)
         .await,
     true => sqlx::query_as::<_, ShowModelSql>(
-        "SELECT * FROM shows INNER JOIN favorites ON shows.user_id = favorites.user_id WHERE favorites.user_id = ?"
+        "SELECT * FROM shows INNER JOIN favorites ON shows.user_id = favorites.user_id WHERE favorites.user_id = ? ORDER BY updated_at DESC"
     )
         .bind(&user_id)
         .fetch_all(&data.db)
