@@ -28,6 +28,7 @@ pub struct SlideModel {
 pub struct CreateSlideBody {
     pub show_id: String,
     pub content: String,
+    pub index_number: i32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
