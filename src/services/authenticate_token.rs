@@ -10,7 +10,7 @@ use serde_json::json;
 use std::future::{ready, Ready};
 
 pub struct AuthenticationGuard {
-    pub user_id: String,
+    pub access_token: String,
 }
 
 impl FromRequest for AuthenticationGuard {
@@ -45,7 +45,7 @@ impl FromRequest for AuthenticationGuard {
 
         match decode {
             Ok(token) => ready(Ok(AuthenticationGuard {
-                user_id: token.claims.sub,
+                access_token: token.claims.sub,
             })),
             Err(err) => ready(Err(ErrorUnauthorized(
                 json!({"status": "fail", "message": err.to_string()}),

@@ -100,12 +100,12 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
             .json(serde_json::json!({"status": "error","message": format!("{:?}", err)}));
     }
 
-    let jwt_secret = data.env.jwt_secret.to_owned();
+    let jwt_secret = &data.env.jwt_secret;
     let now = Utc::now();
     let iat = now.timestamp() as usize;
     let exp = (now + Duration::minutes(data.env.jwt_max_age)).timestamp() as usize;
     let claims: TokenClaims = TokenClaims {
-        sub: github_user.id.to_string(),
+        sub: token_response.access_token,
         exp,
         iat,
     };
@@ -134,12 +134,8 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
 
 #[get("/current_user")]
 async fn get_current_user(auth_guard: AuthenticationGuard, data: Data<AppState>) -> impl Responder {
-    let user_id = auth_guard.user_id.to_owned();
-
-    match sqlx::query_as!(UserModel, "SELECT * FROM users WHERE id = ?", user_id)
-        .fetch_one(&data.db)
-        .await
-    {
+    let access_token = auth_guard.access_token.to_owned();
+    match get_github_user(&access_token).await {
         Ok(user) => {
             let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
                 "user": user,

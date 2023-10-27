@@ -1,5 +1,9 @@
 mod handlers;
-use handlers::{auth, favorites, shows, slides, users};
+use handlers::{
+    auth,
+    // favorites, shows, slides,
+    users,
+};
 mod config;
 mod models;
 mod services;
@@ -9,10 +13,10 @@ use actix_cors::Cors;
 use actix_web::{
     get, http::header, middleware::Logger, web, App, HttpResponse, HttpServer, Responder,
 };
-
 use dotenv::dotenv;
 // use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use sqlx::mysql::MySqlPoolOptions;
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info"); // logging api activity, good for dev
@@ -57,10 +61,10 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(models::app::AppState::init(&pool)))
             .configure(auth::config)
-            .configure(favorites::config)
+            // .configure(favorites::config)
             .configure(users::config)
-            .configure(shows::config)
-            .configure(slides::config)
+            // .configure(shows::config)
+            // .configure(slides::config)
             .service(get_home)
             .wrap(cors)
             .wrap(Logger::default())
