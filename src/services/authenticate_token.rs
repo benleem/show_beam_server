@@ -1,55 +1,49 @@
+use crate::models::auth::GitHubUserModel;
 use crate::models::{app::AppState, auth::TokenClaims};
-
+use crate::services::github_auth::get_github_user;
+use actix_session::{Session, SessionExt};
 use actix_web::{
     dev::Payload,
     error::{Error as ActixWebError, ErrorUnauthorized},
-    http, web, FromRequest, HttpRequest,
+    http, web, FromRequest, HttpRequest, HttpResponse,
 };
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde_json::json;
-use std::future::{ready, Ready};
+use std::error::Error;
+use std::future::{
+    Future, {ready, Ready},
+};
+use std::pin::Pin;
 
 pub struct AuthenticationGuard {
-    pub user_id: String,
+    pub user: GitHubUserModel,
 }
 
 impl FromRequest for AuthenticationGuard {
     type Error = ActixWebError;
-    type Future = Ready<Result<Self, Self::Error>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
 
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
-        println!("{:?}", req);
-        let token = req
-            .cookie("token")
-            .map(|c| c.value().to_string())
-            .or_else(|| {
-                req.headers()
-                    .get(http::header::AUTHORIZATION)
-                    .map(|h| h.to_str().unwrap().split_at(7).1.to_string())
-            });
+        let req = req.clone();
 
-        if token.is_none() {
-            return ready(Err(ErrorUnauthorized(
-                json!({"status": "fail", "message": "You are not logged in, please provide token"}),
-            )));
-        }
+        Box::pin(async move {
+            let session = req.get_session();
+            let access_token = session.get::<String>("access_token");
 
-        let data = req.app_data::<web::Data<AppState>>().unwrap();
-
-        let jwt_secret = data.env.jwt_secret.to_owned();
-        let decode = decode::<TokenClaims>(
-            token.unwrap().as_str(),
-            &DecodingKey::from_secret(jwt_secret.as_ref()),
-            &Validation::new(Algorithm::HS256),
-        );
-
-        match decode {
-            Ok(token) => ready(Ok(AuthenticationGuard {
-                user_id: token.claims.sub,
-            })),
-            Err(err) => ready(Err(ErrorUnauthorized(
-                json!({"status": "fail", "message": err.to_string()}),
-            ))),
-        }
+            match access_token {
+                Ok(Some(token)) => match get_github_user(&token).await {
+                    Ok(user) => Ok(AuthenticationGuard { user }),
+                    Err(error) => Err(ErrorUnauthorized(
+                        json!({"status": "error", "message": error.to_string()}),
+                    )),
+                },
+                Ok(None) => Err(ErrorUnauthorized(
+                    json!({"status": "fail", "message": "You are not logged in"}),
+                )),
+                Err(error) => Err(ErrorUnauthorized(
+                    json!({"status": "error", "message": error.to_string()}),
+                )),
+            }
+        })
     }
 }

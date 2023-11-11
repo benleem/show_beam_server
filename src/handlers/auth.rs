@@ -1,21 +1,11 @@
-use crate::models::{
-    app::AppState,
-    auth::{QueryCode, TokenClaims},
-    users::UserModel,
-};
-use crate::services::{
-    authenticate_token::AuthenticationGuard,
-    github_auth::{get_github_user, request_token},
-};
-
+use crate::models::{app::AppState, auth::QueryCode};
+use crate::services::{authenticate_token::AuthenticationGuard, github_auth::request_token};
+use actix_session::Session;
 use actix_web::{
-    cookie::{time::Duration as ActixWebDuration, Cookie, SameSite},
     get,
     web::{scope, Data, Query, ServiceConfig},
-    HttpRequest, HttpResponse, Responder,
+    HttpResponse, Responder,
 };
-use chrono::{prelude::*, Duration};
-use jsonwebtoken::{encode, EncodingKey, Header};
 use reqwest::header::LOCATION;
 
 #[get("/login")]
@@ -30,6 +20,7 @@ async fn get_login_url(data: Data<AppState>) -> impl Responder {
         ("redirect_uri", redirect_url.as_str()),
         ("scope", "read:user"),
         ("state", state.as_str()),
+        ("prompt", "consent"),
     ];
 
     let mut login_url = root_url.to_string();
@@ -55,10 +46,13 @@ async fn get_login_url(data: Data<AppState>) -> impl Responder {
 }
 
 #[get("/oauth/github")]
-async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> impl Responder {
-    let frontend_origin = data.env.client_origin.to_owned();
+async fn github_oauth_handler(
+    query: Query<QueryCode>,
+    data: Data<AppState>,
+    session: Session,
+) -> impl Responder {
     let code = &query.code;
-    // let state = &query.state;
+    let state = &query.state;
 
     let token_response = request_token(code.as_str(), &data).await;
     if token_response.is_err() {
@@ -67,107 +61,32 @@ async fn github_oauth_handler(query: Query<QueryCode>, data: Data<AppState>) -> 
             .json(serde_json::json!({"status": "fail", "message": message}));
     }
     let token_response = token_response.unwrap();
+    session
+        .insert("access_token", token_response.access_token)
+        .unwrap_or_default();
 
-    let github_user = get_github_user(&token_response.access_token).await;
-    if github_user.is_err() {
-        let message = github_user.err().unwrap().to_string();
-        return HttpResponse::BadGateway()
-            .json(serde_json::json!({"status": "fail", "message": message}));
-    }
-    let github_user = github_user.unwrap();
-
-    let create_user_query = sqlx::query(
-        "INSERT INTO users (id, name, username, email, avatar_url, profile_url) VALUES (?, ?, ?, NULLIF(?, ''), ?, ?)",
-    )
-    .bind(github_user.id.to_string())
-    .bind(github_user.name)
-    .bind(github_user.login)
-    .bind(github_user.email.unwrap_or_default())
-    .bind(github_user.avatar_url)
-    .bind(github_user.html_url)
-    .execute(&data.db)
-    .await
-    .map_err(|err: sqlx::Error| err.to_string());
-
-    if let Err(err) = create_user_query {
-        // if err.contains("Duplicate entry") && err.contains("'users.PRIMARY'") {
-        //     HttpResponse::BadRequest()
-        //         .append_header((LOCATION, format!("{}/profile", frontend_origin)))
-        //         .json(serde_json::json!({"status": "error","message": "This id is already associated with a user"}));
-        // }
-        HttpResponse::InternalServerError()
-            .append_header((LOCATION, format!("{}/profile", frontend_origin)))
-            .json(serde_json::json!({"status": "error","message": format!("{:?}", err)}));
-    }
-
-    let jwt_secret = data.env.jwt_secret.to_owned();
-    let now = Utc::now();
-    let iat = now.timestamp() as usize;
-    let exp = (now + Duration::minutes(data.env.jwt_max_age)).timestamp() as usize;
-    let claims: TokenClaims = TokenClaims {
-        sub: github_user.id.to_string(),
-        exp,
-        iat,
-    };
-
-    let token = encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(jwt_secret.as_ref()),
-    )
-    .unwrap();
-
-    let cookie = Cookie::build("token", token)
-        .domain(data.env.cookie_domain.to_owned())
-        .path("/")
-        .max_age(ActixWebDuration::new(60 * data.env.jwt_max_age, 0))
-        .http_only(true)
-        // .secure(true) //for production
-        .same_site(SameSite::Strict)
-        .finish();
-
+    let frontend_origin = &data.env.client_origin;
     HttpResponse::Found()
         .append_header((LOCATION, format!("{}/profile", frontend_origin)))
-        .cookie(cookie)
         .finish()
 }
 
 #[get("/current_user")]
-async fn get_current_user(auth_guard: AuthenticationGuard, data: Data<AppState>) -> impl Responder {
-    let user_id = auth_guard.user_id.to_owned();
+async fn get_current_user(auth_guard: AuthenticationGuard) -> impl Responder {
+    let user = auth_guard.user;
+    let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
+        "user": user,
+    })});
 
-    match sqlx::query_as!(UserModel, "SELECT * FROM users WHERE id = ?", user_id)
-        .fetch_one(&data.db)
-        .await
-    {
-        Ok(user) => {
-            let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "user": user,
-            })});
-            HttpResponse::Ok().json(json_response)
-        }
-        Err(error) => {
-            let json_response =
-                serde_json::json!({"status": "error","message": format!("{:?}", error)});
-            HttpResponse::InternalServerError().json(json_response)
-        }
-    }
+    HttpResponse::Ok().json(json_response)
 }
 
 #[get("/logout")]
-async fn logout_handler(_: AuthenticationGuard, data: Data<AppState>) -> impl Responder {
-    let cookie = Cookie::build("token", "")
-        .domain(data.env.cookie_domain.to_owned())
-        .path("/")
-        .max_age(ActixWebDuration::new(-1, 0))
-        .http_only(true)
-        // .secure(true) //for production
-        .same_site(SameSite::Strict)
-        .finish();
+async fn logout_handler(session: Session) -> impl Responder {
+    session.purge();
 
-    HttpResponse::Ok()
-        .cookie(cookie)
-        .json(serde_json::json!({"status": "success"}))
+    let json_response = serde_json::json!({"status": "success"});
+    HttpResponse::Ok().json(json_response)
 }
 
 pub fn config(conf: &mut ServiceConfig) {
