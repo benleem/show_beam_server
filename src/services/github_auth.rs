@@ -16,7 +16,6 @@ pub async fn request_token(
 
     let root_url = "https://github.com/login/oauth/access_token";
     let client = Client::new();
-
     let params = [
         ("client_id", client_id.as_str()),
         ("client_secret", client_secret.as_str()),

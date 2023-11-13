@@ -119,13 +119,13 @@ async fn new_show(
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = uuid::Uuid::new_v4().to_string();
-    let user_id = auth_guard.user_id.to_owned();
+    let user_id = auth_guard.user.id.to_string();
 
     let query_result = sqlx::query(
         "INSERT INTO shows (id, user_id, title, description, public, view_code) VALUES (?, ?, ?, ?, ?, NULLIF(?, ''))",
     )
-    .bind(show_id.clone())
-    .bind(user_id.to_string())
+    .bind(&show_id)
+    .bind(user_id)
     .bind(body.title.to_string())
     .bind(body.description.to_string())
     .bind(body.public)
@@ -174,22 +174,21 @@ async fn edit_show(
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
-    let user_id = auth_guard.user_id.to_owned();
+    let user_id = auth_guard.user.id.to_string();
 
     match sqlx::query(
-        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), public = COALESCE(NULLIF(?, ''), public), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND user_id = ?",
+        "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), public = COALESCE(NULLIF(?, NULL), public), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND user_id = ?",
     )
     .bind(body.title.to_owned().unwrap_or_default())
     .bind(body.description.to_owned().unwrap_or_default())
     .bind(body.public.to_owned().unwrap_or_default())
     .bind(body.view_code.to_owned().unwrap_or_default())
-    .bind(show_id.to_owned())
+    .bind(&show_id)
     .bind(user_id)
     .execute(&data.db)
     .await {
         Ok(result) => {
             if result.rows_affected() == 0 {
-                println!("{:?}",result);
                 let json_response = serde_json::json!({ "status": "error","message": format!("This show is not associated with the current user")});
                 return HttpResponse::NotFound().json(json!(json_response));
             }
@@ -237,7 +236,7 @@ async fn delete_show(
     data: Data<AppState>,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
-    let user_id = auth_guard.user_id.to_owned();
+    let user_id = auth_guard.user.id.to_string();
 
     match sqlx::query!(
         "DELETE FROM shows WHERE id = ? AND user_id = ?",

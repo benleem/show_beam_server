@@ -1,20 +1,17 @@
 mod handlers;
-use handlers::{
-    auth,
-    // favorites, shows, slides,
-    users,
-};
+use handlers::{auth, favorites, shows, slides};
 mod config;
 mod models;
 mod services;
 mod tests;
 
 use actix_cors::Cors;
+use actix_session::{storage::CookieSessionStore, Session, SessionMiddleware};
 use actix_web::{
-    get, http::header, middleware::Logger, web, App, HttpResponse, HttpServer, Responder,
+    cookie::Key, get, http::header, middleware::Logger, web, App, Error, HttpResponse, HttpServer,
+    Responder,
 };
 use dotenv::dotenv;
-// use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use sqlx::mysql::MySqlPoolOptions;
 
 #[actix_web::main]
@@ -23,13 +20,13 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init(); // logging api activity, good for dev
 
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let base_url = std::env::var("BASE_URL").expect("BASE_URL must be set");
-    let client_origin = std::env::var("CLIENT_ORIGIN").expect("CLIENT_ORIGIN must be set");
     let port = std::env::var("PORT")
         .expect("PORT must be set")
         .parse::<u16>()
         .unwrap();
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let client_origin = std::env::var("CLIENT_ORIGIN").expect("CLIENT_ORIGIN must be set");
 
     let pool = match MySqlPoolOptions::new()
         .max_connections(5)
@@ -62,11 +59,16 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(models::app::AppState::init(&pool)))
             .configure(auth::config)
             // .configure(favorites::config)
-            .configure(users::config)
-            // .configure(shows::config)
+            .configure(shows::config)
             // .configure(slides::config)
             .service(get_home)
             .wrap(cors)
+            .wrap(
+                // create cookie based session middleware
+                SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
+                    .cookie_secure(false)
+                    .build(),
+            )
             .wrap(Logger::default())
     })
     .bind((base_url, port))?
@@ -75,8 +77,20 @@ async fn main() -> std::io::Result<()> {
 }
 
 #[get("/")]
-async fn get_home() -> impl Responder {
+async fn get_home(session: Session) -> impl Responder {
     let json_response = serde_json::json!({"status": "success","message": "Welcome to the ShowBeam api"
     });
     HttpResponse::Ok().json(json_response)
+
+    // access session data
+    // if let Some(count) = session.get::<i32>("access_token")? {
+    //     session.insert("access_token", count + 1)?;
+    // } else {
+    //     session.insert("access_token", 1)?;
+    // }
+
+    // Ok(HttpResponse::Ok().body(format!(
+    //     "Count is {:?}!",
+    //     session.get::<i32>("counter")?.unwrap()
+    // )))
 }
