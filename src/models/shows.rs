@@ -26,8 +26,12 @@ pub struct ShowModel {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
-// models for what should be recieved in params/body of POST, PUT, GET, DELETE request hitting the /shows endpoint
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ShowUrlQueryParams {
+    pub view_code: String,
+}
 
+// models for what should be recieved in params/body of POST, PUT, GET, DELETE request hitting the /shows endpoint
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GetUserShowsParams {
     pub favorites: bool,
@@ -38,8 +42,6 @@ pub struct CreateShowBody {
     pub title: String,
     pub description: String,
     pub public: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub view_code: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -50,8 +52,7 @@ pub struct UpdateShowBody {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub public: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub view_code: Option<String>,
+    pub view_code: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

@@ -2,7 +2,7 @@ use crate::models::{
     app::AppState,
     shows::{
         filter_db_record, CreateShowBody, DeleteShowParams, GetUserShowsParams, ShowModel,
-        ShowModelSql, UpdateShowBody,
+        ShowModelSql, ShowUrlQueryParams, UpdateShowBody,
     },
 };
 use crate::services::authenticate_token::AuthenticationGuard;
@@ -42,7 +42,12 @@ async fn get_all_shows(data: Data<AppState>) -> impl Responder {
 }
 
 #[get("/{id}")]
-async fn get_show_by_id(path: Path<String>, data: Data<AppState>) -> impl Responder {
+async fn get_show_by_id(
+    path: Path<String>,
+    data: Data<AppState>,
+    query: web::Query<ShowUrlQueryParams>,
+) -> impl Responder {
+    println!("Query!: {:?}", query);
     let show_id = path.into_inner().to_string();
 
     match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows WHERE id = ?", show_id)
@@ -120,6 +125,7 @@ async fn new_show(
 ) -> impl Responder {
     let show_id = uuid::Uuid::new_v4().to_string();
     let user_id = auth_guard.user.id.to_string();
+    let view_code = uuid::Uuid::new_v4().to_string();
 
     let query_result = sqlx::query(
         "INSERT INTO shows (id, user_id, title, description, public, view_code) VALUES (?, ?, ?, ?, ?, NULLIF(?, ''))",
@@ -129,7 +135,7 @@ async fn new_show(
     .bind(body.title.to_string())
     .bind(body.description.to_string())
     .bind(body.public)
-    .bind(body.view_code.to_owned().unwrap_or_default())
+    .bind(view_code)
     .execute(&data.db)
     .await
     .map_err(|err: sqlx::Error| err.to_string());
@@ -175,6 +181,10 @@ async fn edit_show(
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
     let user_id = auth_guard.user.id.to_string();
+    let view_code = match body.view_code {
+        true => Some(uuid::Uuid::new_v4().to_string()),
+        false => None,
+    };
 
     match sqlx::query(
         "UPDATE shows SET title = COALESCE(NULLIF(?, ''), title), description = COALESCE(NULLIF(?, ''), description), public = COALESCE(NULLIF(?, NULL), public), view_code = COALESCE(NULLIF(?, ''), view_code) WHERE id = ? AND user_id = ?",
@@ -182,7 +192,7 @@ async fn edit_show(
     .bind(body.title.to_owned().unwrap_or_default())
     .bind(body.description.to_owned().unwrap_or_default())
     .bind(body.public.to_owned().unwrap_or_default())
-    .bind(body.view_code.to_owned().unwrap_or_default())
+    .bind(view_code.unwrap_or_default())
     .bind(&show_id)
     .bind(user_id)
     .execute(&data.db)
