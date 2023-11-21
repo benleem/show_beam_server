@@ -60,7 +60,7 @@ async fn main() -> std::io::Result<()> {
             .configure(auth::config)
             // .configure(favorites::config)
             .configure(shows::config)
-            // .configure(slides::config)
+            .configure(slides::config)
             .service(get_home)
             .wrap(cors)
             .wrap(
