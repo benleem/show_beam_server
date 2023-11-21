@@ -47,10 +47,9 @@ async fn get_show_by_id(
     data: Data<AppState>,
     query: web::Query<ShowUrlQueryParams>,
 ) -> impl Responder {
-    println!("Query!: {:?}", query);
     let show_id = path.into_inner().to_string();
 
-    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows WHERE id = ?", show_id)
+    match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows WHERE id = ?", &show_id)
         .fetch_one(&data.db)
         .await
     {
@@ -61,6 +60,7 @@ async fn get_show_by_id(
             return HttpResponse::Ok().json(json_response);
         }
         Err(sqlx::Error::RowNotFound) => {
+            // println!("{:?}", result);
             let json_response = serde_json::json!({"status": "fail","message": format!("Show with id: {} not found", show_id)});
             return HttpResponse::NotFound().json(json!(json_response));
         }

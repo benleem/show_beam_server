@@ -9,7 +9,7 @@ pub struct ShowModelSql {
     pub title: String,
     pub description: String,
     pub public: i8, //sql doesn't have bool :(
-    pub view_code: Option<String>,
+    pub view_code: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
@@ -21,14 +21,14 @@ pub struct ShowModel {
     pub title: String,
     pub description: String,
     pub public: bool,
-    pub view_code: Option<String>,
+    pub view_code: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ShowUrlQueryParams {
-    pub view_code: String,
+    pub view_code: Option<String>,
 }
 
 // models for what should be recieved in params/body of POST, PUT, GET, DELETE request hitting the /shows endpoint
