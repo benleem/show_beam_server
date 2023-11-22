@@ -1,7 +1,9 @@
+use std::result;
+
 use crate::models::{
     app::AppState,
     slides::{
-        filter_db_record, CreateSlideBody, DeleteSlideParams, SlideModel, SlideModelSql,
+        filter_db_record, CreateSlideBody, DeleteSlideBody, SlideModel, SlideModelSql,
         UpdateSlideBody,
     },
 };
@@ -178,16 +180,14 @@ async fn edit_slide(
 #[delete("/{id}")]
 async fn delete_slide(
     path: Path<String>,
-    body: Json<DeleteSlideParams>,
+    body: Json<DeleteSlideBody>,
     auth_guard: AuthenticationGuard,
     data: Data<AppState>,
 ) -> impl Responder {
-    let slide_id = path.into_inner().to_string();
     let user_id = auth_guard.user.id.to_string();
-
-    if user_id != body.user_id.to_string() {
-        return HttpResponse::Unauthorized().finish();
-    }
+    let show_id = &body.show_id;
+    let slide_index = &body.slide_index;
+    let slide_id = path.into_inner().to_string();
 
     match sqlx::query!(
         "DELETE FROM slides WHERE id = ? AND user_id = ?",
@@ -197,12 +197,10 @@ async fn delete_slide(
     .execute(&data.db)
     .await
     {
-        Ok(slide) => {
-            if slide.rows_affected() == 0 {
+        Ok(result) => {
+            if result.rows_affected() == 0 {
                 let json_response = serde_json::json!({ "status": "fail","message": format!("slide with ID: {} not found", slide_id) });
                 return HttpResponse::NotFound().json(json_response);
-            } else {
-                return HttpResponse::NoContent().finish();
             }
         }
         Err(err) => {
@@ -211,6 +209,27 @@ async fn delete_slide(
             return HttpResponse::InternalServerError().json(json_response);
         }
     };
+
+    match sqlx::query!(
+        "UPDATE slides SET index_number = index_number - 1 WHERE show_id = ? AND index_number > ?",
+        show_id,
+        slide_index,
+    )
+    .execute(&data.db)
+    .await
+    {
+        Ok(_) => {
+            let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
+                "slide": slide_id
+            })});
+            return HttpResponse::Ok().json(json_response);
+        }
+        Err(err) => {
+            let json_response =
+                serde_json::json!({ "status": "error","message": format!("{:?}", err) });
+            return HttpResponse::InternalServerError().json(json!(json_response));
+        }
+    }
 }
 
 pub fn config(conf: &mut web::ServiceConfig) {
