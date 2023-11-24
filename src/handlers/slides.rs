@@ -17,19 +17,13 @@ use serde_json::json;
 
 // MAKE THIS RETURN ORDERED SLIDES
 #[get("/{show_id}")]
-async fn get_slides_of_show(
-    path: Path<String>,
-    auth_guard: AuthenticationGuard,
-    data: Data<AppState>,
-) -> impl Responder {
+async fn get_slides_of_show(path: Path<String>, data: Data<AppState>) -> impl Responder {
     let show_id = path.into_inner().to_string();
-    let user_id = auth_guard.user.id.to_string();
 
     match sqlx::query_as!(
         SlideModelSql,
-        "SELECT * FROM slides WHERE show_id = ? AND user_id = ?",
+        "SELECT * FROM slides WHERE show_id = ?",
         show_id,
-        user_id
     )
     .fetch_all(&data.db)
     .await

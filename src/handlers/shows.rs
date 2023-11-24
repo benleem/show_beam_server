@@ -1,16 +1,21 @@
-use crate::models::{
-    app::AppState,
-    shows::{
-        filter_db_record, CreateShowBody, DeleteShowParams, GetUserShowsParams, ShowModel,
-        ShowModelSql, ShowUrlQueryParams, UpdateShowBody,
-    },
-};
 use crate::services::authenticate_token::AuthenticationGuard;
+use crate::{
+    models::{
+        app::AppState,
+        shows::{
+            filter_db_record, CreateShowBody, DeleteShowParams, GetUserShowsParams, ShowModel,
+            ShowModelSql, ShowUrlQueryParams, UpdateShowBody,
+        },
+    },
+    services::authenticate_token::PublicAuthenticationGuard,
+};
+use actix_session::Session;
 use actix_web::{
     delete, get, patch, post,
     web::{self, Data, Json, Path, Query},
     HttpResponse, Responder,
 };
+use chrono::ParseMonthError;
 use serde_json::json;
 
 #[get("")]
@@ -43,37 +48,81 @@ async fn get_all_shows(data: Data<AppState>) -> impl Responder {
 
 #[get("/{id}")]
 async fn get_show_by_id(
-    path: Path<String>,
     data: Data<AppState>,
-    query: web::Query<ShowUrlQueryParams>,
+    path: Path<String>,
+    params: Query<ShowUrlQueryParams>,
+    auth_guard: PublicAuthenticationGuard,
 ) -> impl Responder {
     let show_id = path.into_inner().to_string();
+    let view_code = params.view_code.clone().unwrap_or_default();
 
     match sqlx::query_as!(ShowModelSql, "SELECT * FROM shows WHERE id = ?", &show_id)
         .fetch_one(&data.db)
         .await
     {
         Ok(result) => {
-            let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                "show": filter_db_record(&result)
-            })});
-            return HttpResponse::Ok().json(json_response);
+            let show = filter_db_record(&result);
+
+            // return show if show is public or view code is passed in params
+            if show.public || view_code == show.view_code {
+                let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
+                    "show": show
+                })});
+                return HttpResponse::Ok().json(json_response);
+            }
+
+            match auth_guard.user {
+                Some(user) => {
+                    if user.id as u32 == show.user_id {
+                        // return show if user is owner
+                        let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
+                            "show": show
+                        })});
+                        return HttpResponse::Ok().json(json_response);
+                    } else {
+                        // return show if user is editor
+                        match sqlx::query_as::<_, ShowModelSql>(
+                            "SELECT * FROM editors WHERE user_id = ? AND show_id = ?",
+                        )
+                        .bind(user.id.to_string())
+                        .bind(&show_id)
+                        .fetch_one(&data.db)
+                        .await
+                        {
+                            Ok(_) => {
+                                let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
+                                    "show": show
+                                })});
+                                return HttpResponse::Ok().json(json_response);
+                            }
+                            Err(_) => {
+                                let json_response = serde_json::json!({"status": "fail","message": "You are not authorized to view this show"});
+                                return HttpResponse::Unauthorized().json(json_response);
+                            }
+                        };
+                    }
+                }
+                None => {}
+            };
+
+            let json_response = serde_json::json!({"status": "fail","message": "You are not authorized to view this show"});
+            return HttpResponse::Unauthorized().json(json_response);
         }
         Err(sqlx::Error::RowNotFound) => {
-            // println!("{:?}", result);
             let json_response = serde_json::json!({"status": "fail","message": format!("Show with id: {} not found", show_id)});
-            return HttpResponse::NotFound().json(json!(json_response));
+            return HttpResponse::NotFound().json(json_response);
         }
         Err(err) => {
             let json_response =
                 serde_json::json!({ "status": "error","message": format!("{:?}", err) });
-            return HttpResponse::InternalServerError().json(json!(json_response));
+            return HttpResponse::InternalServerError().json(json_response);
         }
     };
 }
 
 #[get("/users/{id}")]
 async fn get_user_shows(
+    auth_guard: AuthenticationGuard,
     path: Path<String>,
     params: Query<GetUserShowsParams>,
     data: Data<AppState>,

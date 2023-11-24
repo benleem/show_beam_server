@@ -66,7 +66,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(
                 // create cookie based session middleware
                 SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
-                    .cookie_secure(false)
+                    .cookie_secure(false) // true for production
                     .build(),
             )
             .wrap(Logger::default())
