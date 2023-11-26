@@ -64,11 +64,16 @@ async fn get_show_by_id(
             let show = filter_db_record(&result);
 
             // return show if show is public or view code is passed in params
-            if show.public || view_code == show.view_code {
-                let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                    "show": show
-                })});
-                return HttpResponse::Ok().json(json_response);
+            fn check_alternate_auth(show: ShowModel, view_code: String) -> HttpResponse {
+                if show.public || view_code == show.view_code {
+                    let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
+                        "show": show,
+                        "can_edit": false
+                    })});
+                    return HttpResponse::Ok().json(json_response);
+                }
+                let json_response = serde_json::json!({"status": "fail","message": "You are not authorized to view this show"});
+                return HttpResponse::Unauthorized().json(json_response);
             }
 
             match auth_guard.user {
@@ -76,7 +81,8 @@ async fn get_show_by_id(
                     if user.id as u32 == show.user_id {
                         // return show if user is owner
                         let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                            "show": show
+                            "show": show,
+                            "can_edit": true
                         })});
                         return HttpResponse::Ok().json(json_response);
                     } else {
@@ -91,22 +97,21 @@ async fn get_show_by_id(
                         {
                             Ok(_) => {
                                 let json_response = serde_json::json!({"status": "success","data": serde_json::json!({
-                                    "show": show
+                                    "show": show,
+                                    "can_edit": true
                                 })});
                                 return HttpResponse::Ok().json(json_response);
                             }
                             Err(_) => {
-                                let json_response = serde_json::json!({"status": "fail","message": "You are not authorized to view this show"});
-                                return HttpResponse::Unauthorized().json(json_response);
+                                return check_alternate_auth(show, view_code);
                             }
                         };
                     }
                 }
-                None => {}
+                None => {
+                    return check_alternate_auth(show, view_code);
+                }
             };
-
-            let json_response = serde_json::json!({"status": "fail","message": "You are not authorized to view this show"});
-            return HttpResponse::Unauthorized().json(json_response);
         }
         Err(sqlx::Error::RowNotFound) => {
             let json_response = serde_json::json!({"status": "fail","message": format!("Show with id: {} not found", show_id)});
