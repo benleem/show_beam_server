@@ -302,6 +302,25 @@ async fn delete_show(
     let show_id = path.into_inner().to_string();
     let user_id = auth_guard.user.id.to_string();
 
+    let query_result = sqlx::query!(
+        "DELETE FROM slides WHERE show_id = ? AND user_id = ?",
+        show_id,
+        user_id
+    )
+    .execute(&data.db)
+    .await
+    .map_err(|err: sqlx::Error| err.to_string());
+
+    if let Err(err) = query_result {
+        // if err.contains("Duplicate entry") && err.contains("'user.id'") {
+        //     return HttpResponse::BadRequest().json(
+        //             serde_json::json!({"status": "fail","message": ""}),
+        //         );
+        // }
+        return HttpResponse::InternalServerError()
+            .json(serde_json::json!({"status": "error","message": format!("{:?}", err)}));
+    }
+
     match sqlx::query!(
         "DELETE FROM shows WHERE id = ? AND user_id = ?",
         show_id,
