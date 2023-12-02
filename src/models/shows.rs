@@ -5,11 +5,11 @@ use sqlx::FromRow;
 #[derive(Debug, Deserialize, Serialize, FromRow)]
 pub struct ShowModelSql {
     pub id: String,
-    pub owner_id: String,
+    pub user_id: u32,
     pub title: String,
     pub description: String,
     pub public: i8, //sql doesn't have bool :(
-    pub view_code: Option<String>,
+    pub view_code: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
@@ -17,17 +17,21 @@ pub struct ShowModelSql {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ShowModel {
     pub id: String,
-    pub owner_id: String,
+    pub user_id: u32,
     pub title: String,
     pub description: String,
     pub public: bool,
-    pub view_code: Option<String>,
+    pub view_code: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
 
-// models for what should be recieved in params/body of POST, PUT, GET, DELETE request hitting the /shows endpoint
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ShowUrlQueryParams {
+    pub view_code: Option<String>,
+}
 
+// models for what should be recieved in params/body of POST, PUT, GET, DELETE request hitting the /shows endpoint
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GetUserShowsParams {
     pub favorites: bool,
@@ -38,8 +42,6 @@ pub struct CreateShowBody {
     pub title: String,
     pub description: String,
     pub public: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub view_code: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -50,13 +52,12 @@ pub struct UpdateShowBody {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub public: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub view_code: Option<String>,
+    pub view_code: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DeleteShowParams {
-    pub owner_id: String,
+    pub user_id: u32,
 }
 
 // response and request structs for hitting the /shows endpoint
@@ -75,7 +76,7 @@ pub struct DeleteShowParams {
 pub fn filter_db_record(show: &ShowModelSql) -> ShowModel {
     ShowModel {
         id: show.id.to_owned(),
-        owner_id: show.owner_id.to_owned(),
+        user_id: show.user_id.to_owned(),
         title: show.title.to_owned(),
         description: show.description.to_owned(),
         public: show.public != 0,
