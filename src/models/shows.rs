@@ -9,7 +9,7 @@ pub struct ShowModelSql {
     pub title: String,
     pub description: String,
     pub public: i8, //sql doesn't have bool :(
-    pub view_code: Option<String>,
+    pub view_code: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
@@ -21,7 +21,7 @@ pub struct ShowModel {
     pub title: String,
     pub description: String,
     pub public: bool,
-    pub view_code: Option<String>,
+    pub view_code: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
