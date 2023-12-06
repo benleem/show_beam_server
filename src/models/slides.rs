@@ -38,9 +38,9 @@ pub struct UpdateSlideBody {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct DeleteSlideParams {
-    pub user_id: u32,
+pub struct DeleteSlideBody {
     pub show_id: String,
+    pub slide_index: i32,
 }
 
 pub fn filter_db_record(slide: &SlideModelSql) -> SlideModel {

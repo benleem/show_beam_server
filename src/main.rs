@@ -25,9 +25,9 @@ async fn main() -> std::io::Result<()> {
         .expect("PORT must be set")
         .parse::<u16>()
         .unwrap();
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let client_origin = std::env::var("CLIENT_ORIGIN").expect("CLIENT_ORIGIN must be set");
 
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = match MySqlPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
@@ -60,13 +60,13 @@ async fn main() -> std::io::Result<()> {
             .configure(auth::config)
             // .configure(favorites::config)
             .configure(shows::config)
-            // .configure(slides::config)
+            .configure(slides::config)
             .service(get_home)
             .wrap(cors)
             .wrap(
                 // create cookie based session middleware
                 SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
-                    .cookie_secure(false)
+                    .cookie_secure(false) // true for production
                     .build(),
             )
             .wrap(Logger::default())

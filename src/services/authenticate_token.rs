@@ -47,3 +47,30 @@ impl FromRequest for AuthenticationGuard {
         })
     }
 }
+
+pub struct PublicAuthenticationGuard {
+    pub user: Option<GitHubUserModel>,
+}
+
+impl FromRequest for PublicAuthenticationGuard {
+    type Error = ActixWebError;
+    type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
+
+    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+        let req = req.clone();
+
+        Box::pin(async move {
+            let session = req.get_session();
+            let access_token = session.get::<String>("access_token");
+
+            match access_token {
+                Ok(Some(token)) => match get_github_user(&token).await {
+                    Ok(user) => Ok(PublicAuthenticationGuard { user: Some(user) }),
+                    Err(_) => Ok(PublicAuthenticationGuard { user: None }),
+                },
+                Ok(None) => Ok(PublicAuthenticationGuard { user: None }),
+                Err(_) => Ok(PublicAuthenticationGuard { user: None }),
+            }
+        })
+    }
+}

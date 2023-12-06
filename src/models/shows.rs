@@ -28,7 +28,7 @@ pub struct ShowModel {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ShowUrlQueryParams {
-    pub view_code: String,
+    pub view_code: Option<String>,
 }
 
 // models for what should be recieved in params/body of POST, PUT, GET, DELETE request hitting the /shows endpoint
