@@ -35,6 +35,8 @@ pub struct ShowUrlQueryParams {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GetUserShowsParams {
     pub favorites: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub like_query: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

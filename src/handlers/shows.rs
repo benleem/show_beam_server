@@ -132,21 +132,30 @@ async fn get_user_shows(
     params: Query<GetUserShowsParams>,
     data: Data<AppState>,
 ) -> impl Responder {
+    log::debug!("In get user shows: {:?}", params);
     let favorites = params.favorites;
-    let user_id = path.into_inner().to_string();
+    let user_id = auth_guard.user.id.to_string();
 
-    let query_result = match favorites {
-    false => sqlx::query_as::<_, ShowModelSql>("SELECT * FROM shows WHERE user_id = ? ORDER BY updated_at DESC")
+    let mut query_str =
+         String::from(match favorites {
+             false => 
+                 "SELECT * FROM shows WHERE user_id = ? ORDER BY updated_at DESC",
+             true => 
+            "SELECT * FROM shows INNER JOIN favorites ON shows.user_id = favorites.user_id WHERE favorites.user_id = ? ORDER BY updated_at DESC",
+    });
+
+    if let Some(like_query) = &params.like_query {
+        query_str = format!("SELECT *
+            FROM (
+                {}
+            ) AS subquery
+            WHERE title LIKE '%{}%';", query_str, like_query);
+    }
+
+     let query_result = sqlx::query_as::<_, ShowModelSql>(query_str.as_str())
         .bind(&user_id)
         .fetch_all(&data.db)
-        .await,
-    true => sqlx::query_as::<_, ShowModelSql>(
-        "SELECT * FROM shows INNER JOIN favorites ON shows.user_id = favorites.user_id WHERE favorites.user_id = ? ORDER BY updated_at DESC"
-    )
-        .bind(&user_id)
-        .fetch_all(&data.db)
-        .await,
-    };
+        .await;
 
     match query_result {
         Ok(result) => {
